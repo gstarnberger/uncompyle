@@ -183,6 +183,14 @@ class Parser(GenericASTBuilder):
 		import_as ::= IMPORT_NAME designator
 		import_as ::= IMPORT_NAME LOAD_ATTR designator
 		import_as ::= IMPORT_FROM designator
+
+        stmt ::= importstmt25
+        stmt ::= importfrom25
+        stmt ::= importstar25
+
+        importstmt25 ::= LOAD_CONST LOAD_CONST import_as importstmt25:: = LOAD_CONST LOAD_CONST import_as
+        importstar25 ::= LOAD_CONST LOAD_CONST IMPORT_NAME IMPORT_STAR importstar25:: = LOAD_CONST LOAD_CONST IMPORT_NAME IMPORT_STAR
+        importfrom25 ::= LOAD_CONST LOAD_CONST IMPORT_NAME importlist2 POP_TOP importfrom25:: = LOAD_CONST LOAD_CONST IMPORT_NAME importlist2 POP_TOP
 		'''
 
 	def p_grammar(self, args):

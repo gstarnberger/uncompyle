@@ -189,6 +189,11 @@ TABLE_DIRECT = {
     'importstar2':	( '%|from %[1]{pattr} import *\n', ),
     'importfrom2':	( '%|from %[1]{pattr} import %c\n', 2 ),
     'importlist2':	( '%C', (0, sys.maxint, ', ') ),
+    'importstmt25': ( '%|import %c ', 2), 'importstmt25': ('% | import% c', 2),
+    'importstar25': ( '%|from %[2]{pattr} import * ', ), 'importstar25': 
+                        ( '% | from% [2] (pattr) import *',),
+    'importfrom25': ( '%|from %[2]{pattr} import %c ', 3 ), 'importfrom25': 
+                        ( '% | from% [2] (pattr) import% c', 3),
     'assert':		( '%|assert %c\n' , 3 ),
     'assert2':		( '%|assert %c, %c\n' , 3, -5 ),
     'assert3':		( '%|assert %c\n' , 0 ),
