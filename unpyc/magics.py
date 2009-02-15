@@ -12,13 +12,29 @@ def __by_version(magics):
     return by_version
 
 versions = {
+    # taken from from Python/import.c
     # magic, version
-    __build_magic(20121): '1.5',
-    __build_magic(50428): '1.6',
-    __build_magic(50823): '2.0',
-    __build_magic(60202): '2.1',
-    __build_magic(60717): '2.2',
-    __build_magic(62011): '2.3',
+    __build_magic(20121): '1.5', #1.5, 1.5.1, 1.5.2
+    __build_magic(50428): '1.6', #1.6
+    __build_magic(50823): '2.0', #2.0, 2.0.1
+    __build_magic(60202): '2.1', #2.1, 2.1.1, 2.1.2
+    __build_magic(60717): '2.2', #2.2
+    __build_magic(62011): '2.3', #2.3a0
+    __build_magic(62021): '2.3', #2.3a0
+    __build_magic(62041): '2.4', #2.4a0
+    __build_magic(62051): '2.4', #2.4a3
+    __build_magic(62061): '2.4', #2.4b1
+    __build_magic(62071): '2.5', #2.5a0
+    __build_magic(62081): '2.5', #2.5a0 (ast-branch)
+    __build_magic(62091): '2.5', #2.5a0 (with)
+    __build_magic(62092): '2.5', #2.5a0 (changed WITH_CLEANUP opcode)
+    __build_magic(62101): '2.5', #2.5b3 (fix wrong code: for x, in ...)
+    __build_magic(62111): '2.5', #2.5b3 (fix wrong code: x += yield)
+    __build_magic(62121): '2.5', #2.5c1 (fix wrong lnotab with for loops and
+                           # storing constants that should have been removed
+    __build_magic(62131): '2.5', #2.5c2 (fix wrong code: for x, in ... in listcomp/genexp)
+    __build_magic(62151): '2.6', #2.6a0 (peephole optimizations & STORE_MAP)
+    __build_magic(62161): '2.6', #2.6a1 (WITH_CLEANUP optimization)
 }
 
 magics = __by_version(versions)
