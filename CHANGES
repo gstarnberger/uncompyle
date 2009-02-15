@@ -1,0 +1,94 @@
+release 2.3.2
+  - tidied up copyright and changelog information for releases 2.3 and later
+
+release 2.3.1 (Dan Pascu)
+  - implemented a structure detection technique that fixes problems with
+    optimised jumps in Python >= 2.3. In the previous release (decompyle 2.3),
+    these problems meant that some files were incorrectly decompiled and others
+    could not be decompiled at all.  With this new structure detection
+    technique, thorough testing over the standard python libraries suggests
+    that decompyle 2.3.1 can handle everything that decompyle 2.2beta1 could,
+    plus new Python 2.3 bytecodes and constructs.
+
+release 2.3 (Dan Pascu)
+  - support for Python 2.3 added
+  - use the marshal and disassembly code from their respective python
+    versions, so that decompyle can manipulate bytecode independently
+    of the interpreter that runs decompyle itself (for example it can 
+    decompile python2.3 bytecode even when running under python2.2)
+
+release 2.2beta1 (hartmut Goebel)
+  - support for Python 1.5 up to Python 2.2
+  - no longer requires to be run with the Python interpreter version
+    which generated the byte-code.
+  - requires Python 2.2
+  - pretty-prints docstrings, hashes, lists and tuples
+  - decompyle is now a script and a package
+  - added emacs mode-hint and tab-width for each file output
+  - enhanced test suite: more test patterns, .pyc/.pyo included
+  - avoids unnecessary 'global' statements
+  - still untested: EXTENDED_ARG
+
+  internal changes:
+  - major code overhoul: splitted into several modules, clean-ups
+  - use a list of valid magics instead of the single one from imp.py
+  - uses copies of 'dis.py' for every supported version. This ensures
+    correct disassemling of the byte-code.
+  - use a single Walker and a single Parser, thus saving time and memory
+  - use augmented assign and 'print >>' internally
+  - optimized 'Walker.engine', the main part of code generation
+
+release 0.6.0: (hartmut Goebel)
+  - extended print (Python 2.0)
+  - extended import (Python 2.0) (may not cover all cases)
+  - augmented assign (Python 2.0) (may not cover all cases)
+  - list comprehensions (Python 2.0)
+  - equivalent for 'apply' (Python 1.6)
+  - if .. elif .. else are now nested as expected
+  - assert test, data
+  - unpack list corrected (was the same as unpack tuple)
+  - fixed unpack tuple (trailing semicolon was missing)
+  - major speed up :-)
+  - reduced memory usage (pre-alpha-0.5 has increased it a lot)
+  - still missing: EXTENDED_ARG
+
+pre-alpha-0.5: (hartmut Goebel)
+  - *args, **kwargs
+  - global
+  - formal tuple parameters (eg. def a(self, (x,y,z)) )
+  - actual lambda parameters (eg.  X(lambda z: z**2) )
+  - remove last 'return None' in procedures
+  - remove last 'return locals()' in class definitions
+  - docstrings
+
+pre-alpha-0.4: (hartmut Goebel)
+  - assert
+  - try/except/finally
+  - parentheses in expressions
+  - nested expressions
+  - extracted dissassemble() from module dis and
+    removed ugly redirect of stdout, thus saved a lot of
+    ugly code and a lot of memory
+
+pre-alpha-0.3: (hartmut Goebel)
+  - keyword arguments
+  - some boolean expressions
+  - and/or
+  - complex conditions in if/while
+  - read byte-code from .pyc without importing
+  - access to the body of classes and modules
+  - class and function definitions
+  - a = b = c = xxx
+
+pre-alpha-0.1 -> pre-alpha-0.2:
+  -  SET_LINENO filtered out in lexer now
+  -  added support for subscripts (just for Christian Tismer :-)
+  -  fixed bug with handling of BUILD_{LIST,TUPLE} & CALL_FUNCTION
+  -  dict-building support
+  -  comparison support
+  -  exec support
+  -  del support
+  -  pass support
+  -  slice support
+  -  no more extraneous (albeit legal) commas
+  -  finally, it excepts try [sic] but not all 42 variations of it
