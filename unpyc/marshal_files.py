@@ -28,6 +28,6 @@ def import_(module=None,version=None,magic=None):
         # use current version's 'marshal' module
         return __import__('marshal', globals(), locals())
     else:
-        return __import__('decompyle.%s' % module, globals(),
-                          locals(), 'decompyle')
+        return __import__('unpyc.%s' % module, globals(),
+                          locals(), 'unpyc')
 

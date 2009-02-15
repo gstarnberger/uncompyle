@@ -1,39 +1,37 @@
 #!/usr/bin/env python
 
-"""Setup script for the 'decompyle' distribution."""
-
-____revision__ = "$Id: setup.py,v 1.1.1.1 2004/12/14 12:29:31 dan Exp $"
+"""Setup script for the 'unpyc' distribution."""
 
 from distutils.core import setup, Extension
 
-setup (name = "decompyle",
-       version = "2.3",
+setup (name = "unpyc",
+       version = "1.0",
        description = "Python byte-code to source-code converter",
        author = "Hartmut Goebel",
        author_email = "hartmut@oberon.noris.de",
-       url = "http://www.goebel-consult.de/decompyle/",
-       packages=['decompyle'],
-       scripts=['scripts/decompyle'],
-       ext_modules = [Extension('decompyle/marshal_20',
-                                ['decompyle/marshal_20.c'],
+       url = "http://code.google.com/p/unpyc/",
+       packages=['unpyc'],
+       scripts=['scripts/unpyc'],
+       ext_modules = [Extension('unpyc/marshal_20',
+                                ['unpyc/marshal_20.c'],
                                 define_macros=[]),
-                      Extension('decompyle/marshal_21',
-                                ['decompyle/marshal_21.c'],
+                      Extension('unpyc/marshal_21',
+                                ['unpyc/marshal_21.c'],
                                 define_macros=[]),
-                      Extension('decompyle/marshal_22',
-                                ['decompyle/marshal_22.c'],
+                      Extension('unpyc/marshal_22',
+                                ['unpyc/marshal_22.c'],
                                 define_macros=[]),
-                      Extension('decompyle/marshal_23',
-                                ['decompyle/marshal_23.c'],
+                      Extension('unpyc/marshal_23',
+                                ['unpyc/marshal_23.c'],
                                 define_macros=[]),
-                      Extension('decompyle/marshal_24',
-                                ['decompyle/marshal_24.c'],
+                      Extension('unpyc/marshal_24',
+                                ['unpyc/marshal_24.c'],
                                 define_macros=[]),
-                      Extension('decompyle/marshal_25',
-                                ['decompyle/marshal_25.c'],
+                      Extension('unpyc/marshal_25',
+                                ['unpyc/marshal_25.c'],
                                 define_macros=[]),
-                      Extension('decompyle/marshal_26',
-                                ['decompyle/marshal_26.c'],
+                      Extension('unpyc/marshal_26',
+                                ['unpyc/marshal_26.c'],
                                 define_macros=[]),
                       ]
       )

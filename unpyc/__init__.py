@@ -29,7 +29,7 @@
 import sys, types, os
 import Scanner, Walker, verify, magics
 
-__all__ = ['decompyle_file', 'decompyle_file', 'main']
+__all__ = ['unpyc_file', 'unpyc_file', 'main']
 
 TABWIDTH=4
 
@@ -78,7 +78,7 @@ def _load_module(filename):
     fp.close()
     return version, co
 
-def decompyle(version, co, out=None, showasm=0, showast=0):
+def unpyc(version, co, out=None, showasm=0, showast=0):
     """
     diassembles a given code block 'co'
     """
@@ -122,12 +122,12 @@ def decompyle(version, co, out=None, showasm=0, showast=0):
         print >> out, '# tab-width:', TABWIDTH
 
 
-def decompyle_file(filename, outstream=None, showasm=0, showast=0):
+def unpyc_file(filename, outstream=None, showasm=0, showast=0):
     """
     decompile Python byte-code file (.pyc)
     """
     version, co = _load_module(filename)
-    decompyle(version, co, out=outstream, showasm=showasm, showast=showast)
+    unpyc(version, co, out=outstream, showasm=showasm, showast=showast)
     co = None
 
 #---- main -------
@@ -148,7 +148,7 @@ def main(in_base, out_base, files, outfile=None,
     """
     in_base	base directory for input files
     out_base	base directory for output files (ignored when
-    files	list of filenames to be decompyles (relative to src_base)
+    files	list of filenames to be unpycs (relative to src_base)
     outfile	write output to this filename (overwrites out_base)
 
     For rediecting output to
@@ -186,7 +186,7 @@ def main(in_base, out_base, files, outfile=None,
 
         # try to decomyple the input file
         try:
-            decompyle_file(infile, outstream, showasm, showast)
+            unpyc_file(infile, outstream, showasm, showast)
             tot_files += 1
         except KeyboardInterrupt:
             if outfile:
@@ -195,12 +195,12 @@ def main(in_base, out_base, files, outfile=None,
             raise
         except:
 	    failed_files += 1
-            sys.stderr.write("### Can't decompyle  %s\n" % file)
+            sys.stderr.write("### Can't unpyc  %s\n" % file)
             if outfile:
                 outstream.close()
                 os.rename(outfile, outfile + '_failed')
             raise
-	else: # decompyle successfull
+	else: # unpyc successfull
             if outfile:
                 outstream.close()
             if do_verify:
@@ -216,7 +216,7 @@ def main(in_base, out_base, files, outfile=None,
             else:
                 okay_files += 1
                 print "+++ okay decompyling", infile, __memUsage()
-    print 'decompyled %i files: %i okay, %i failed, %i verify failed' % \
+    print 'unpycd %i files: %i okay, %i failed, %i verify failed' % \
           (tot_files, okay_files, failed_files, verify_failed_files)
 
 # local variables:

@@ -4,23 +4,23 @@
 # Copyright (c) 2000-2002 by hartmut Goebel <hartmut@goebel.noris.de>
 #
 """
-Usage: decompyle [OPTIONS]... [ FILE | DIR]...
+Usage: unpyc [OPTIONS]... [ FILE | DIR]...
 
 Examples:
-  decompyle      foo.pyc bar.pyc       # decompyle foo.pyc, bar.pyc to stdout
-  decompyle -o . foo.pyc bar.pyc       # decompyle to ./foo.dis and ./bar.dis
-  decompyle -o /tmp /usr/lib/python1.5 # decompyle whole library
+  unpyc      foo.pyc bar.pyc       # unpyc foo.pyc, bar.pyc to stdout
+  unpyc -o . foo.pyc bar.pyc       # unpyc to ./foo.dis and ./bar.dis
+  unpyc -o /tmp /usr/lib/python1.5 # unpyc whole library
 
 Options:
-  -o <path>     output decompyled files to this path:
-                if multiple input files are decompyled, the common prefix
+  -o <path>     output unpycd files to this path:
+                if multiple input files are unpycd, the common prefix
                 is stripped from these names and the remainder appended to
                 <path>
-                  decompyle -o /tmp bla/fasel.pyc bla/foo.pyc
+                  unpyc -o /tmp bla/fasel.pyc bla/foo.pyc
                     -> /tmp/fasel.dis, /tmp/foo.dis
-                  decompyle -o /tmp bla/fasel.pyc bar/foo.pyc
+                  unpyc -o /tmp bla/fasel.pyc bar/foo.pyc
                     -> /tmp/bla/fasel.dis, /tmp/bar/foo.dis
-                  decompyle -o /tmp /usr/lib/python1.5
+                  unpyc -o /tmp /usr/lib/python1.5
                     -> /tmp/smtplib.dis ... /tmp/lib-tk/FixTk.dis
   --verify      compare generated source with input byte-code
                 (requires -o)
@@ -31,16 +31,16 @@ Debugging Options:
   --showast     include AST (abstract syntax tree) (disables --verify)
 
 Extensions of generated files:
-  '.dis'             successfully decompyled (and verified if --verify)
-  '.dis_unverified'  successfully decompyled but --verify failed
-  '.nodis'           decompyle failed (contact author for enhancement)
+  '.dis'             successfully unpycd (and verified if --verify)
+  '.dis_unverified'  successfully unpycd but --verify failed
+  '.nodis'           unpyc failed (contact author for enhancement)
 """
 
 Usage_short = \
 "decomyple [--help] [--verify] [--showasm] [--showast] [-o <path>] FILE|DIR..."
 
 import sys, os, getopt
-from decompyle import main, verify
+from unpyc import main, verify
 import time
 
 showasm = showast = do_verify = 0

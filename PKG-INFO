@@ -1,8 +1,8 @@
 Metadata-Version: 1.0
-Name: decompyle
-Version: 2.3
+Name: unpyc
+Version: 1.0
 Summary: Python byte-code to source-code converter
-Home-page: http://www.goebel-consult.de/decompyle/
+Home-page: http://code.google.com/p/unpyc/
 Author: Hartmut Goebel
 Author-email: hartmut@oberon.noris.de
 License: UNKNOWN

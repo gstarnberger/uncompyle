@@ -1,11 +1,11 @@
 #
 # (C) Copyright 2000-2002 by hartmut Goebel <hartmut@goebel.noris.de>
 #
-# byte-code verifier for decompyle
+# byte-code verifier for unpyc
 #
 
 import types
-import decompyle, Scanner
+import unpyc, Scanner
 
 JUMP_OPs = None
 
@@ -201,14 +201,14 @@ class Token(Scanner.Token):
 
 def compare_code_with_srcfile(pyc_filename, src_filename):
 	"""Compare a .pyc with a source code file."""
-	version, code_obj1 = decompyle._load_module(pyc_filename)
-	code_obj2 = decompyle._load_file(src_filename)
+	version, code_obj1 = unpyc._load_module(pyc_filename)
+	code_obj2 = unpyc._load_file(src_filename)
 	cmp_code_objects(version, code_obj1, code_obj2)
 
 def compare_files(pyc_filename1, pyc_filename2):
 	"""Compare two .pyc files."""
-	version, code_obj1 = decompyle._load_module(pyc_filename1)
-	version, code_obj2 = decompyle._load_module(pyc_filename2)
+	version, code_obj1 = unpyc._load_module(pyc_filename1)
+	version, code_obj2 = unpyc._load_module(pyc_filename2)
 	cmp_code_objects(version, code_obj1, code_obj2)
 
 if __name__ == '__main__':
