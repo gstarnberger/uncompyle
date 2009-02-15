@@ -267,7 +267,7 @@ w_object(PyObject *v, WFILE *p)
 }
 
 void
-PyMarshal_WriteLongToFile(long x, FILE *fp)
+PyMarshal_WriteLongToFile(long x, FILE *fp, int wat)
 {
 	WFILE wf;
 	wf.fp = fp;
@@ -277,7 +277,7 @@ PyMarshal_WriteLongToFile(long x, FILE *fp)
 }
 
 void
-PyMarshal_WriteObjectToFile(PyObject *x, FILE *fp)
+PyMarshal_WriteObjectToFile(PyObject *x, FILE *fp, int wat)
 {
 	WFILE wf;
 	wf.fp = fp;
@@ -739,7 +739,7 @@ PyMarshal_ReadObjectFromString(char *str, int len)
 }
 
 PyObject *
-PyMarshal_WriteObjectToString(PyObject *x) /* wrs_object() */
+PyMarshal_WriteObjectToString(PyObject *x, int wat) /* wrs_object() */
 {
 	WFILE wf;
 	wf.fp = NULL;
@@ -827,7 +827,7 @@ marshal_dumps(PyObject *self, PyObject *args)
 	PyObject *x;
 	if (!PyArg_ParseTuple(args, "O:dumps", &x))
 		return NULL;
-	return PyMarshal_WriteObjectToString(x);
+	return PyMarshal_WriteObjectToString(x, 0);
 }
 
 static PyObject *
