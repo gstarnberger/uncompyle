@@ -739,7 +739,7 @@ PyMarshal_ReadObjectFromFile(FILE *fp)
 }
 
 PyObject *
-PyMarshal_ReadObjectFromString(char *str, int len)
+PyMarshal_ReadObjectFromString(char *str, Py_ssite_t len)
 {
 	RFILE rf;
 	if (PyErr_Occurred()) {
