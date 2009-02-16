@@ -552,6 +552,3 @@ def parse(tokens, customize):
 	ast = p.parse(tokens)
 	#p.cleanup()
 	return ast
-
-# local variables:
-# tab-width: 4

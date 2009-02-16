@@ -492,7 +492,6 @@ class Walker(GenericASTTraversal, object):
         prettyprint a mapexpr
         'mapexpr' is something like k = {'a': 1, 'b': 42 }"
         """
-        # " <- emacs happy
         assert node[-1] == 'kvlist'
         node = node[-1] # goto kvlist
 
@@ -825,6 +824,3 @@ class Walker(GenericASTTraversal, object):
         if self.showast:
             self.print_(repr(ast))
         return ast
-
-# local variables:
-# tab-width: 4

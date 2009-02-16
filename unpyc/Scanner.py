@@ -650,6 +650,3 @@ def getscanner(version):
     if not __scanners.has_key(version):
         __scanners[version] = Scanner(version)
     return __scanners[version]
-
-# local variables:
-# tab-width: 4

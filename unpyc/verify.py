@@ -217,6 +217,3 @@ if __name__ == '__main__':
 	print `t1`
 	print `t2`
 	print cmp(t1, t2), cmp(t1.type, t2.type), cmp(t1.attr, t2.attr)
-
-# local variables:
-# tab-width: 4

@@ -212,8 +212,5 @@ def main(in_base, out_base, files, codes, outfile=None,
             else:
                 okay_files += 1
                 print "+++ okay decompyling", infile, __memUsage()
-    print 'unpycd %i files: %i okay, %i failed, %i verify failed' % \
+    print '# decompiled %i files: %i okay, %i failed, %i verify failed' % \
           (tot_files, okay_files, failed_files, verify_failed_files)
-
-# local variables:
-# tab-width: 4
