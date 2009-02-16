@@ -173,9 +173,10 @@ class Parser(GenericASTBuilder):
         stmt ::= importstmt2
         stmt ::= importfrom2
         stmt ::= importstar2
-        stmt ::= importstmt25
-        stmt ::= importfrom25
-        stmt ::= importstar25
+        
+        stmt ::= _25_importstmt
+        stmt ::= _25_importfrom
+        stmt ::= _25_importstar
 
         importstmt2 ::= LOAD_CONST import_as
         importstar2 ::= LOAD_CONST IMPORT_NAME IMPORT_STAR
@@ -187,9 +188,9 @@ class Parser(GenericASTBuilder):
         import_as ::= IMPORT_NAME LOAD_ATTR designator
         import_as ::= IMPORT_FROM designator
 
-        importstmt25 ::= LOAD_CONST LOAD_CONST import_as 
-        importstar25 ::= LOAD_CONST LOAD_CONST IMPORT_NAME IMPORT_STAR 
-        importfrom25 ::= LOAD_CONST LOAD_CONST IMPORT_NAME importlist2 POP_TOP
+        _25_importstmt ::= LOAD_CONST LOAD_CONST import_as 
+        _25_importstar ::= LOAD_CONST LOAD_CONST IMPORT_NAME IMPORT_STAR 
+        _25_importfrom ::= LOAD_CONST LOAD_CONST IMPORT_NAME importlist2 POP_TOP
         '''
 
     def p_grammar(self, args):
