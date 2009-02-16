@@ -173,6 +173,9 @@ class Parser(GenericASTBuilder):
 		stmt ::= importstmt2
 		stmt ::= importfrom2
 		stmt ::= importstar2
+        stmt ::= importstmt25
+        stmt ::= importfrom25
+        stmt ::= importstar25
 
 		importstmt2 ::= LOAD_CONST import_as
 		importstar2 ::= LOAD_CONST IMPORT_NAME IMPORT_STAR
@@ -184,13 +187,9 @@ class Parser(GenericASTBuilder):
 		import_as ::= IMPORT_NAME LOAD_ATTR designator
 		import_as ::= IMPORT_FROM designator
 
-        stmt ::= importstmt25
-        stmt ::= importfrom25
-        stmt ::= importstar25
-
-        importstmt25 ::= LOAD_CONST LOAD_CONST import_as importstmt25:: = LOAD_CONST LOAD_CONST import_as
-        importstar25 ::= LOAD_CONST LOAD_CONST IMPORT_NAME IMPORT_STAR importstar25:: = LOAD_CONST LOAD_CONST IMPORT_NAME IMPORT_STAR
-        importfrom25 ::= LOAD_CONST LOAD_CONST IMPORT_NAME importlist2 POP_TOP importfrom25:: = LOAD_CONST LOAD_CONST IMPORT_NAME importlist2 POP_TOP
+        importstmt25 ::= LOAD_CONST LOAD_CONST import_as 
+        importstar25 ::= LOAD_CONST LOAD_CONST IMPORT_NAME IMPORT_STAR 
+        importfrom25 ::= LOAD_CONST LOAD_CONST IMPORT_NAME importlist2 POP_TOP
 		'''
 
 	def p_grammar(self, args):
@@ -295,6 +294,11 @@ class Parser(GenericASTBuilder):
 				LOAD_GLOBAL expr RAISE_VARARGS
 				COME_FROM POP_TOP
 
+        stmt ::= ifforstmt
+        ifforstmt ::= expr condjmp SETUP_LOOP expr _for designator
+        stmts_opt JUMP_ABSOLUTE
+        COME_FROM POP_BLOCK _jump COME_FROM
+
 		_jump ::= JUMP_ABSOLUTE
 		_jump ::= JUMP_FORWARD
 
@@ -368,6 +372,12 @@ class Parser(GenericASTBuilder):
 		forelsestmt ::= SETUP_LOOP expr _for designator
 				stmts_opt JUMP_ABSOLUTE
 				COME_FROM POP_BLOCK stmts COME_FROM
+
+        stmt ::= ifforstmt
+        ifforstmt ::= expr condjmp SETUP_LOOP expr _for designator
+        stmts_opt JUMP_ABSOLUTE
+        COME_FROM POP_BLOCK _jump COME_FROM
+        POP_TOP COME_FROM COME_FROM
 
 		'''
 
