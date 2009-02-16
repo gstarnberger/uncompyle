@@ -126,7 +126,6 @@ if sys.platform.startswith('linux') and os.uname()[2][:2] == '2.':
     def __memUsage():
         mi = open('/proc/self/stat', 'r')
         mu = mi.readline().split()[22]
-	#return mu
         mi.close()
         return int(mu) / 1000000
 else:

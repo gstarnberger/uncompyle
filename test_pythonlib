@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 # emacs-mode: -*-python-*-
 """
 test_pythonlib -- unpyc and verify Python libraries
@@ -19,7 +19,7 @@ Step 2: Run the test:
 	  test_pythonlib --mylib --verify # decompile verify 'mylib'
 """
 
-import unpyc
+from unpyc import main, verify
 import os, time, shutil
 from fnmatch import fnmatch
 
@@ -40,6 +40,7 @@ test_options = {
     '2.0': (os.path.join(lib_prefix, 'python2.0'), PYC, 'python-lib2.0'),
     '2.1': (os.path.join(lib_prefix, 'python2.1'), PYC, 'python-lib2.1'),
     '2.2': (os.path.join(lib_prefix, 'python2.2'), PYC, 'python-lib2.2'),
+    '2.5': (os.path.join(lib_prefix, 'python2.5'), PYC, 'python-lib2.5'),
     }
 
 #-----
@@ -69,7 +70,7 @@ def do_tests(src_dir, patterns, target_dir, start_with=None, do_verify=0):
             pass
 
     print time.ctime()
-    unpyc.main(src_dir, target_dir, files, do_verify=do_verify)
+    main(src_dir, target_dir, files, [], do_verify=do_verify)
     print time.ctime()
     
 if __name__ == '__main__':

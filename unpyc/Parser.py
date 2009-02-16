@@ -568,6 +568,7 @@ def parse(tokens, customize):
             p.addRule('mklambda ::= %s load_closure LOAD_LAMBDA %s' %
                   ('expr '*v, k), nop)
             rule = 'mkfunc ::= %s load_closure LOAD_CONST %s' % ('expr '*v, k)
+            rule = 'mkfunc ::= %s closure_list LOAD_CONST %s' % ('expr '*v, k)
         elif op in ('CALL_FUNCTION', 'CALL_FUNCTION_VAR',
                 'CALL_FUNCTION_VAR_KW', 'CALL_FUNCTION_KW'):
             na = (v & 0xff)           # positional parameters
@@ -576,6 +577,11 @@ def parse(tokens, customize):
             nak = ( len(op)-len('CALL_FUNCTION') ) / 3
             rule = 'expr ::= expr ' + 'expr '*na + 'kwarg '*nk \
                    + 'expr ' * nak + k
+        # CE - Hack for >= 2.5
+        #      Now all values loaded via LOAD_CLOSURE are packed into
+        #      a tuple before calling MAKE_CLOSURE.
+        elif op == 'CLOSURE_LIST':
+            rule = 'closure_list ::= load_closure %s' % k
         else:
             raise 'unknown customize token %s' % k
         p.addRule(rule, nop)

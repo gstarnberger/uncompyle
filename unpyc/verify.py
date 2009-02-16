@@ -133,7 +133,7 @@ def cmp_code_objects(version, code_obj1, code_obj2, name=''):
 			
 			# use changed Token class
 			#   we (re)set this here to save exception handling,
-			#   which would get 'unübersichtlich'
+			#   which would get 'unubersichtlich'
 			scanner.setTokenClass(Token)
 			try:
 				# disassemble both code-objects

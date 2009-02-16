@@ -139,7 +139,7 @@ class Scanner:
                         # for comparism (todo: think about changing this)
                         #pattr = 'code_object @ 0x%x %s->%s' %\
                         #	(id(const), const.co_filename, const.co_name)
-                        pattr = 'code_object ' + const.co_name
+                        pattr = '<code_object ' + const.co_name + '>'
                     else:
                         pattr = const
                 elif op in dis.hasname:
@@ -165,7 +165,14 @@ class Scanner:
                             'CALL_FUNCTION_VAR', 'CALL_FUNCTION_KW',
                             'CALL_FUNCTION_VAR_KW', 'DUP_TOPX',
                             ):
-                opname = '%s_%d' % (opname, oparg)
+                # CE - Hack for >= 2.5
+                #      Now all values loaded via LOAD_CLOSURE are packed into
+                #      a tuple before calling MAKE_CLOSURE.
+                if opname == 'BUILD_TUPLE' and \
+                   dis.opname[ord(code[offset-3])] == 'LOAD_CLOSURE':
+                    opname = 'CLOSURE_LIST_%d' % oparg
+                else:
+                    opname = '%s_%d' % (opname, oparg)
                 customize[opname] = oparg
 
             rv.append(Token(opname, oparg, pattr, offset))
