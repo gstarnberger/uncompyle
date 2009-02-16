@@ -28,8 +28,8 @@ Options:
   --help        show this message
 
 Debugging Options:
-  --showasm     include byte-code                  (disables --verify)
-  --showast     include AST (abstract syntax tree) (disables --verify)
+  --showasm   -a  include byte-code                  (disables --verify)
+  --showast   -t  include AST (abstract syntax tree) (disables --verify)
 
 Extensions of generated files:
   '.dis'             successfully decompiled (and verified if --verify)
@@ -49,7 +49,7 @@ outfile = '-'
 out_base = None
 codes = []
 
-opts, files = getopt.getopt(sys.argv[1:], 'ho:c:',
+opts, files = getopt.getopt(sys.argv[1:], 'hato:c:',
                            ['help', 'verify', 'showast', 'showasm'])
 for opt, val in opts:
     if opt in ('-h', '--help'):
@@ -57,10 +57,10 @@ for opt, val in opts:
         sys.exit(0)
     elif opt == '--verify':
         do_verify = 1
-    elif opt == '--showasm':
+    elif opt in ('--showasm', '-a'):
         showasm = 1
         do_verify = 0
-    elif opt == '--showast':
+    elif opt in ('--showast', '-t'):
         showast = 1
         do_verify = 0
     elif opt == '-o':
