@@ -189,9 +189,7 @@ TABLE_DIRECT = {
     'importstar2':	( '%|from %[1]{pattr} import *\n', ),
     'importfrom2':	( '%|from %[1]{pattr} import %c\n', 2 ),
     'importlist2':	( '%C', (0, sys.maxint, ', ') ),
-    'importstmt25': ( '%|import %c\n', 2), 
-    'importstar25': ( '%|from %[2]{pattr} import *\n', ), 
-    'importfrom25': ( '%|from %[2]{pattr} import %c\n', 3 ), 
+    
     'assert':		( '%|assert %c\n' , 3 ),
     'assert2':		( '%|assert %c, %c\n' , 3, -5 ),
     'assert3':		( '%|assert %c\n' , 0 ),
@@ -239,6 +237,29 @@ TABLE_DIRECT = {
     'kv':		( '%c: %c', 3, 1 ),
     'kv2':		( '%c: %c', 1, 2 ),
     'mapexpr':		( '{%[1]C}', (0,sys.maxint,', ') ),
+    
+    ##
+    ## Python 2.5 Additions
+    ##
+    
+    # Import style for 2.5
+    '_25_importstmt': ( '%|import %c\n', 2),
+    '_25_importstar': ( '%|from %[2]{pattr} import *\n', ),
+    '_25_importfrom': ( '%|from %[2]{pattr} import %c\n', 3 ),
+    
+    # If statement fixes
+    # CE - These values should be correct by themselves, the main difference
+    #      is is the composition of and/or on the Parser side.
+    '_25_and':            ( '(%c and %c)', 0, 3 ),
+    '_25_and_end':        ( '%c', 0),
+    '_25_or':             ( '(%c or %c)', 0, 3),
+    '_25_or_end':         ( '%c', 0),
+    
+    # CE - These should also be fine as they are.
+    '_25_ifstmt':     ( '%|if %c:\n%+%c%-', 0, 1),
+    '_25_ifelsestmt': ( '%|if %c:\n%+%c%-%|else:\n%+%c%-', 0, 1, -2),
+    '_25_jumptarget_e': ( '%c', -1),
+    '_25_jumptarget_s': ( '%c', -1),
 }
 
 
