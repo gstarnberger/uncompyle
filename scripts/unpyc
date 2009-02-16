@@ -23,6 +23,7 @@ Options:
                   unpyc -o /tmp /usr/lib/python1.5
                     -> /tmp/smtplib.dis ... /tmp/lib-tk/FixTk.dis
   -c <code>     attempts a disassembly after compiling <code
+  -d            do not print timestamps
   --verify      compare generated source with input byte-code
                 (requires -o)
   --help        show this message
@@ -41,6 +42,7 @@ Usage_short = \
 "decomyple [--help] [--verify] [--showasm] [--showast] [-o <path>] FILE|DIR..."
 
 import sys, os, getopt
+import os.path
 from unpyc import main, verify
 import time
 
@@ -48,9 +50,16 @@ showasm = showast = do_verify = 0
 outfile = '-'
 out_base = None
 codes = []
+timestamp = True
+timestampfmt = "# %Y.%m.%d %H:%M:%S %Z"
 
-opts, files = getopt.getopt(sys.argv[1:], 'hato:c:',
+try:
+    opts, files = getopt.getopt(sys.argv[1:], 'hatdo:c:',
                            ['help', 'verify', 'showast', 'showasm'])
+except getopt.GetoptError, e:
+    print >>sys.stderr, '%s: %s' % (os.path.basename(sys.argv[0]), e)
+    sys.exit(-1)    
+
 for opt, val in opts:
     if opt in ('-h', '--help'):
         print __doc__
@@ -65,6 +74,8 @@ for opt, val in opts:
         do_verify = 0
     elif opt == '-o':
         outfile = val
+    elif opt == '-d':
+        timestamp = False
     elif opt == '-c':
         codes.append(val)
     else:
@@ -89,7 +100,8 @@ elif outfile and os.path.isdir(outfile):
 elif outfile and len(files) > 1:
     out_base = outfile; outfile = None
 
-print time.ctime() #, args[0]
+if timestamp:
+    print time.strftime(timestampfmt)
 
 try:
     main(src_base, out_base, files, codes, outfile, showasm, showast, do_verify)
@@ -98,4 +110,5 @@ except KeyboardInterrupt, OSError:
 except verify.VerifyCmpError:
     raise
 
-print time.ctime()
+if timestamp:
+    print time.strftime(timestampfmt)

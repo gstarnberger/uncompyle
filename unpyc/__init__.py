@@ -162,9 +162,8 @@ def main(in_base, out_base, files, codes, outfile=None,
     tot_files = okay_files = failed_files = verify_failed_files = 0
 
     for code in codes:
-        import compiler
         version = sys.version[:3] # "2.5"
-        co = compiler.compile(code, "", "exec")
+        co = compile(code, "", "eval")
         unpyc(sys.version[:3], co, sys.stdout, showasm=showasm, showast=showast)
 
     for file in files:
