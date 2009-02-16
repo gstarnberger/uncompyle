@@ -7,7 +7,7 @@
 
 __all__ = ['parse', 'AST', 'ParserError', 'Parser']
 
-from spark import GenericASTBuilder, GenericASTMatcher
+from spark import GenericASTBuilder
 import string, exceptions, sys
 from UserList import UserList
 
