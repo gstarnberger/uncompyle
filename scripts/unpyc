@@ -12,8 +12,8 @@ Examples:
   unpyc -o /tmp /usr/lib/python1.5 # unpyc whole library
 
 Options:
-  -o <path>     output unpycd files to this path:
-                if multiple input files are unpycd, the common prefix
+  -o <path>     output decompiled files to this path:
+                if multiple input files are decompiled, the common prefix
                 is stripped from these names and the remainder appended to
                 <path>
                   unpyc -o /tmp bla/fasel.pyc bla/foo.pyc
@@ -22,6 +22,7 @@ Options:
                     -> /tmp/bla/fasel.dis, /tmp/bar/foo.dis
                   unpyc -o /tmp /usr/lib/python1.5
                     -> /tmp/smtplib.dis ... /tmp/lib-tk/FixTk.dis
+  -c <code>     attempts a disassembly after compiling <code
   --verify      compare generated source with input byte-code
                 (requires -o)
   --help        show this message
@@ -31,8 +32,8 @@ Debugging Options:
   --showast     include AST (abstract syntax tree) (disables --verify)
 
 Extensions of generated files:
-  '.dis'             successfully unpycd (and verified if --verify)
-  '.dis_unverified'  successfully unpycd but --verify failed
+  '.dis'             successfully decompiled (and verified if --verify)
+  '.dis_unverified'  successfully decompile but --verify failed
   '.nodis'           unpyc failed (contact author for enhancement)
 """
 
@@ -46,8 +47,9 @@ import time
 showasm = showast = do_verify = 0
 outfile = '-'
 out_base = None
+codes = []
 
-opts, files = getopt.getopt(sys.argv[1:], 'ho:',
+opts, files = getopt.getopt(sys.argv[1:], 'ho:c:',
                            ['help', 'verify', 'showast', 'showasm'])
 for opt, val in opts:
     if opt in ('-h', '--help'):
@@ -63,6 +65,8 @@ for opt, val in opts:
         do_verify = 0
     elif opt == '-o':
         outfile = val
+    elif opt == '-c':
+        codes.append(val)
     else:
         print Usage_short
         sys.exit(1)
@@ -88,7 +92,7 @@ elif outfile and len(files) > 1:
 print time.ctime() #, args[0]
 
 try:
-    main(src_base, out_base, files, outfile, showasm, showast, do_verify)
+    main(src_base, out_base, files, codes, outfile, showasm, showast, do_verify)
 except KeyboardInterrupt, OSError:
     pass
 except verify.VerifyCmpError:

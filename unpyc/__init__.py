@@ -101,10 +101,6 @@ def unpyc(version, co, out=None, showasm=0, showast=0):
 
     del tokens # save memory
 
-    if not showasm and not showast:
-        # add a hint for emacs
-        print >> out, '# emacs-mode: -*- python-*-'
-
     # convert leading '__doc__ = "..." into doc string
     assert ast == 'stmts'
     if ast[0] == Walker.ASSIGN_DOC_STRING(co.co_consts[0]):
@@ -116,18 +112,12 @@ def unpyc(version, co, out=None, showasm=0, showast=0):
 
     walker.gen_source(ast, customize)
 
-    if not showasm and not showast:
-        # add another hint for emacs
-        print >> out, '# local variables:'
-        print >> out, '# tab-width:', TABWIDTH
-
-
 def unpyc_file(filename, outstream=None, showasm=0, showast=0):
     """
     decompile Python byte-code file (.pyc)
     """
     version, co = _load_module(filename)
-    unpyc(version, co, out=outstream, showasm=showasm, showast=showast)
+    unpyc(version, co, outstream, showasm, showast)
     co = None
 
 #---- main -------
@@ -143,7 +133,7 @@ else:
     def __memUsage():
         return ''
 
-def main(in_base, out_base, files, outfile=None,
+def main(in_base, out_base, files, codes, outfile=None,
          showasm=0, showast=0, do_verify=0):
     """
     in_base	base directory for input files
@@ -151,7 +141,7 @@ def main(in_base, out_base, files, outfile=None,
     files	list of filenames to be unpycs (relative to src_base)
     outfile	write output to this filename (overwrites out_base)
 
-    For rediecting output to
+    For redirecting output to
     - <filename>		outfile=<filename> (out_base is ignored)
     - files below out_base	out_base=...
     - stdout			out_base=None, outfile=None
@@ -170,6 +160,12 @@ def main(in_base, out_base, files, outfile=None,
     of = outfile
 
     tot_files = okay_files = failed_files = verify_failed_files = 0
+
+    for code in codes:
+        import compiler
+        version = sys.version[:3] # "2.5"
+        co = compiler.compile(code, "", "exec")
+        unpyc(sys.version[:3], co, sys.stdout, showasm=showasm, showast=showast)
 
     for file in files:
         infile = os.path.join(in_base, file)
