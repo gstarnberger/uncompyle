@@ -48,7 +48,9 @@ tests['2.1'] = ['loops2', 'nested_scopes'] + tests['2.0']
 tests['2.2'] = ['divide_future', 'divide_no_future', 'iterators',
                 'yield'] + tests['2.1']
 
-total_tests = len(tests['2.2'])
+tests['2.5'] = tests['2.2']
+
+total_tests = len(tests['2.5'])
 #tests['2.2'].sort(); print tests['2.2']
 
 extension = '.py' + (__debug__ and 'c' or 'o')
