@@ -633,10 +633,8 @@ class GenericASTBuilder(GenericParser):
             if isinstance(arg, self.AST):
                 children.append(arg)
             else:
-                children.append(self.terminal(arg))
+                children.append(arg)
         return self.nonterminal(lhs, children)
-
-    def terminal(self, token):	return token
 
     def nonterminal(self, type, args):
         rv = self.AST(type)
@@ -687,21 +685,6 @@ class GenericASTTraversal:
         if hasattr(self, name):
             func = getattr(self, name)
             func(node)
-
-    def postorder(self, node=None):
-        if node is None:
-            node = self.ast
-
-        for kid in node:
-            self.postorder(kid)
-
-        name = 'n_' + self.typestring(node)
-        if hasattr(self, name):
-            func = getattr(self, name)
-            func(node)
-        else:
-            self.default(node)
-
 
     def default(self, node):
         pass
