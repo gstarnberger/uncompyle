@@ -163,7 +163,7 @@ def main(in_base, out_base, files, codes, outfile=None,
 
     for code in codes:
         version = sys.version[:3] # "2.5"
-        co = compile(code, "", "eval")
+        co = compile(code, "", "exec")
         unpyc(sys.version[:3], co, sys.stdout, showasm=showasm, showast=showast)
 
     for file in files:
