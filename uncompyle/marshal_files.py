@@ -29,6 +29,6 @@ def import_(module=None,version=None,magic=None):
         # use current version's 'marshal' module
         return __import__('marshal', globals(), locals())
     else:
-        return __import__('unpyc.%s' % module, globals(),
-                          locals(), 'unpyc')
+        return __import__('uncompyle.%s' % module, globals(),
+                          locals(), 'uncompyle')
 

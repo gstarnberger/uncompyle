@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # emacs-mode: -*-python-*-
 """
-test_pythonlib -- unpyc and verify Python libraries
+test_pythonlib -- uncompyle and verify Python libraries
 
 Usage-Examples:
 
@@ -19,7 +19,7 @@ Step 2: Run the test:
 	  test_pythonlib --mylib --verify # decompile verify 'mylib'
 """
 
-from unpyc import main, verify
+from uncompyle import main, verify
 import os, time, shutil
 from fnmatch import fnmatch
 

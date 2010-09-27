@@ -29,7 +29,7 @@
 import sys, types, os
 import Scanner, Walker, verify, magics
 
-__all__ = ['unpyc_file', 'unpyc_file', 'main']
+__all__ = ['uncompyle_file', 'uncompyle_file', 'main']
 
 TABWIDTH=4
 
@@ -78,7 +78,7 @@ def _load_module(filename):
     fp.close()
     return version, co
 
-def unpyc(version, co, out=None, showasm=0, showast=0):
+def uncompyle(version, co, out=None, showasm=0, showast=0):
     """
     diassembles a given code block 'co'
     """
@@ -112,12 +112,12 @@ def unpyc(version, co, out=None, showasm=0, showast=0):
 
     walker.gen_source(ast, customize)
 
-def unpyc_file(filename, outstream=None, showasm=0, showast=0):
+def uncompyle_file(filename, outstream=None, showasm=0, showast=0):
     """
     decompile Python byte-code file (.pyc)
     """
     version, co = _load_module(filename)
-    unpyc(version, co, outstream, showasm, showast)
+    uncompyle(version, co, outstream, showasm, showast)
     co = None
 
 #---- main -------
@@ -137,7 +137,7 @@ def main(in_base, out_base, files, codes, outfile=None,
     """
     in_base	base directory for input files
     out_base	base directory for output files (ignored when
-    files	list of filenames to be unpycs (relative to src_base)
+    files	list of filenames to be uncompyled (relative to src_base)
     outfile	write output to this filename (overwrites out_base)
 
     For redirecting output to
@@ -163,7 +163,7 @@ def main(in_base, out_base, files, codes, outfile=None,
     for code in codes:
         version = sys.version[:3] # "2.5"
         co = compile(code, "", "exec")
-        unpyc(sys.version[:3], co, sys.stdout, showasm=showasm, showast=showast)
+        uncompyle(sys.version[:3], co, sys.stdout, showasm=showasm, showast=showast)
 
     for file in files:
         infile = os.path.join(in_base, file)
@@ -180,7 +180,7 @@ def main(in_base, out_base, files, codes, outfile=None,
 
         # try to decomyple the input file
         try:
-            unpyc_file(infile, outstream, showasm, showast)
+            uncompyle_file(infile, outstream, showasm, showast)
             tot_files += 1
         except KeyboardInterrupt:
             if outfile:
@@ -189,12 +189,12 @@ def main(in_base, out_base, files, codes, outfile=None,
             raise
         except:
 	    failed_files += 1
-            sys.stderr.write("### Can't unpyc  %s\n" % file)
+            sys.stderr.write("### Can't uncompyle  %s\n" % file)
             if outfile:
                 outstream.close()
                 os.rename(outfile, outfile + '_failed')
             raise
-	else: # unpyc successfull
+	else: # uncompyle successfull
             if outfile:
                 outstream.close()
             if do_verify:

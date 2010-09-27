@@ -13,4 +13,4 @@ if [ `dirname $file` == '.' ] ; then
     file=$BASEDIR/test_$file.pyc
 fi
 
-python -u ./scripts/unpyc $options $file 2>&1 |less
+python -u ./scripts/uncompyle $options $file 2>&1 |less

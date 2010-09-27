@@ -1,19 +1,19 @@
 
 Announcing:
 
-                 unpyc -- A Python byte-code decompiler
+                 uncompyle -- A Python byte-code decompiler
 
                       version 1.0
 
 
-'unpyc' converts Python byte-code back into equivalent Python
+'uncompyle' converts Python byte-code back into equivalent Python
 source. It accepts byte-code from any Python version starting with 1.5
 up to 2.7.
 
 The generated source is very readable: docstrings, lists, tuples and
 hashes get pretty-printed.
 
-'unpyc' may also verify the equivalence of the generated source by
+'uncompyle' may also verify the equivalence of the generated source by
 by compiling it and comparing both byte-codes.
 
 
@@ -25,7 +25,7 @@ Since Release 2.2beta1:
   * Now decompiles byte-code from Python versions 1.5 up to 2.3
 
   * Use the marshal and dis code from each python version to make
-    decompilation independent of the interpreter unpyc runs with.
+    decompilation independent of the interpreter uncompyle runs with.
     (One can for example decompile python2.3 bytecode while running 
      under python 2.2)
 
@@ -42,7 +42,7 @@ Since Release 0.6.0:
 
   * pretty-prints docstrings, hashes, lists and tuples
 
-  * unpyc is now a script and a package
+  * uncompyle is now a script and a package
 
   * Now adds an emacs mode-hint and tab-width to the output files
 
@@ -73,7 +73,7 @@ point.
 Simple Help Needed!
 -------------------
 
-Please help testing 'unpyc'! 
+Please help testing 'uncompyle'! 
 
 The EXTENDED_ARG token is untested (this is a new token for Python 2.0
 which is used only if many items exist within a code object). If you
@@ -88,7 +88,7 @@ It's easy: the script 'test_pythonlib' which is included in the source
 Requirements
 ------------
 
-'unpyc' requires Python 2.2 or later.
+'uncompyle' requires Python 2.2 or later.
 
 
 Known Bugs/Restrictions

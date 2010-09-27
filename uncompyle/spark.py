@@ -19,7 +19,7 @@
 #  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 #  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-__version__ = 'SPARK-0.7 (pre-alpha-7) unpyc trim'
+__version__ = 'SPARK-0.7 (pre-alpha-7) uncompyle trim'
 
 def _namelist(instance):
     namelist, namedict, classlist = [], {}, [instance.__class__]

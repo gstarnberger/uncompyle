@@ -4,23 +4,23 @@
 # Copyright (c) 2000-2002 by hartmut Goebel <hartmut@goebel.noris.de>
 #
 """
-Usage: unpyc [OPTIONS]... [ FILE | DIR]...
+Usage: uncompyle [OPTIONS]... [ FILE | DIR]...
 
 Examples:
-  unpyc      foo.pyc bar.pyc       # unpyc foo.pyc, bar.pyc to stdout
-  unpyc -o . foo.pyc bar.pyc       # unpyc to ./foo.dis and ./bar.dis
-  unpyc -o /tmp /usr/lib/python1.5 # unpyc whole library
+  uncompyle      foo.pyc bar.pyc       # uncompyle foo.pyc, bar.pyc to stdout
+  uncompyle -o . foo.pyc bar.pyc       # uncompyle to ./foo.dis and ./bar.dis
+  uncompyle -o /tmp /usr/lib/python1.5 # uncompyle whole library
 
 Options:
   -o <path>     output decompiled files to this path:
                 if multiple input files are decompiled, the common prefix
                 is stripped from these names and the remainder appended to
                 <path>
-                  unpyc -o /tmp bla/fasel.pyc bla/foo.pyc
+                  uncompyle -o /tmp bla/fasel.pyc bla/foo.pyc
                     -> /tmp/fasel.dis, /tmp/foo.dis
-                  unpyc -o /tmp bla/fasel.pyc bar/foo.pyc
+                  uncompyle -o /tmp bla/fasel.pyc bar/foo.pyc
                     -> /tmp/bla/fasel.dis, /tmp/bar/foo.dis
-                  unpyc -o /tmp /usr/lib/python1.5
+                  uncompyle -o /tmp /usr/lib/python1.5
                     -> /tmp/smtplib.dis ... /tmp/lib-tk/FixTk.dis
   -c <code>     attempts a disassembly after compiling <code
   -d            do not print timestamps
@@ -35,7 +35,7 @@ Debugging Options:
 Extensions of generated files:
   '.dis'             successfully decompiled (and verified if --verify)
   '.dis_unverified'  successfully decompile but --verify failed
-  '.nodis'           unpyc failed (contact author for enhancement)
+  '.nodis'           uncompyle failed (contact author for enhancement)
 """
 
 Usage_short = \
@@ -43,7 +43,7 @@ Usage_short = \
 
 import sys, os, getopt
 import os.path
-from unpyc import main, verify
+from uncompyle import main, verify
 import time
 
 showasm = showast = do_verify = 0

@@ -11,8 +11,8 @@ class dis(object):
     def __init__(self, version, module):
         self._version = version
         from __builtin__ import __import__
-        self._module = __import__('unpyc.%s' % module, globals(),
-                                  locals(), 'unpyc')
+        self._module = __import__('uncompyle.%s' % module, globals(),
+                                  locals(), 'uncompyle')
 
     def __getattr__(self, attr):
         try:
