@@ -35,6 +35,12 @@ versions = {
     __build_magic(62131): '2.5', #2.5c2 (fix wrong code: for x, in ... in listcomp/genexp)
     __build_magic(62151): '2.6', #2.6a0 (peephole optimizations & STORE_MAP)
     __build_magic(62161): '2.6', #2.6a1 (WITH_CLEANUP optimization)
+    __build_magic(62171): '2.7', #2.7a0 (optimize list comprehensions/change LIST_APPEND)
+    __build_magic(62181): '2.7', #2.7a0 (optimize conditional branches:
+    # introduce POP_JUMP_IF_FALSE and POP_JUMP_IF_TRUE)
+    __build_magic(62191): '2.7', #2.7a0 (introduce SETUP_WITH)
+    __build_magic(62201): '2.7', #2.7a0 (introduce BUILD_SET)
+    __build_magic(62211): '2.7'  #2.7a0 (introduce MAP_ADD and SET_ADD)
 }
 
 magics = __by_version(versions)

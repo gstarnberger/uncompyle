@@ -41,6 +41,8 @@ test_options = {
     '2.1': (os.path.join(lib_prefix, 'python2.1'), PYC, 'python-lib2.1'),
     '2.2': (os.path.join(lib_prefix, 'python2.2'), PYC, 'python-lib2.2'),
     '2.5': (os.path.join(lib_prefix, 'python2.5'), PYC, 'python-lib2.5'),
+    '2.6': (os.path.join(lib_prefix, 'python2.6'), PYC, 'python-lib2.6'),
+    '2.7': (os.path.join(lib_prefix, 'python2.7'), PYC, 'python-lib2.7')
     }
 
 #-----

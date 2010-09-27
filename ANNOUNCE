@@ -8,7 +8,7 @@ Announcing:
 
 'unpyc' converts Python byte-code back into equivalent Python
 source. It accepts byte-code from any Python version starting with 1.5
-up to 2.3.
+up to 2.7.
 
 The generated source is very readable: docstrings, lists, tuples and
 hashes get pretty-printed.

@@ -34,6 +34,7 @@ by_version = {
     '2.4': dis('2.4', 'dis_24'),
     '2.5': dis('2.5', 'dis_25'),
     '2.6': dis('2.6', 'dis_26'),
+    '2.7': dis('2.7', 'dis_27')
 }
 
 by_magic = dict( [ (mag, by_version[ver])

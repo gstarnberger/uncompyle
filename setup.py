@@ -5,7 +5,7 @@
 from distutils.core import setup, Extension
 
 setup (name = "unpyc",
-       version = "1.0",
+       version = "1.1",
        description = "Python byte-code to source-code converter",
        author = "Hartmut Goebel",
        author_email = "hartmut@oberon.noris.de",
@@ -33,5 +33,8 @@ setup (name = "unpyc",
                       Extension('unpyc/marshal_26',
                                 ['unpyc/marshal_26.c'],
                                 define_macros=[]),
+                      Extension('unpyc/marshal_27',
+                                ['unpyc/marshal_27.c'],
+                                define_macros=[])
                       ]
       )
