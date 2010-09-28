@@ -389,9 +389,6 @@ class Walker(GenericASTTraversal, object):
                     string = string.replace(quote, unquote)
             return string
        
-        print docstring
-        print type(docstring)
-
         if docstring.find('\\\n') or docstring.find('\n'): # multiline string
             if docstring.find('"""') >=0:
                 quote = "'''"
