@@ -526,15 +526,19 @@ class Walker(GenericASTTraversal, object):
         sep = INDENT_PER_LEVEL[:-1]
         self.write('{')
         for kv in node:
-            assert kv in ('kv', 'kv2')
+            assert kv in ('kv', 'kv2', 'kv3')
             # kv ::= DUP_TOP expr ROT_TWO expr STORE_SUBSCR
             # kv2 ::= DUP_TOP expr expr ROT_THREE STORE_SUBSCR
+            # kv3 ::= expr expr STORE_MAP
             if kv == 'kv':
                 name = self.traverse(kv[-2], indent='');
                 value = self.traverse(kv[1], indent=self.indent+(len(name)+2)*' ')
-            else:
+            elif kv == 'kv2':
                 name = self.traverse(kv[1], indent='');
                 value = self.traverse(kv[-3], indent=self.indent+(len(name)+2)*' ')
+            elif kv == 'kv3':
+                name = self.traverse(kv[-2], indent='');
+                value = self.traverse(kv[0], indent=self.indent+(len(name)+2)*' ')
             self.write(sep, name, ': ', value)
             sep = line_seperator
         self.write('}')
