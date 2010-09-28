@@ -218,6 +218,13 @@ TABLE_DIRECT = {
     'elifstmt':		( '%|elif %c:\n%+%c%-', 0, 2 ),
     'elifelsestmt':	( '%|elif %c:\n%+%c%-%|else:\n%+%c%-', 0, 2, -2 ),
 
+    'ifnotstmt':( '%|if not(%c):\n%+%c%-', 0, 2 ),
+    'ifnotelsestmt':( '%|if not(%c):\n%+%c%-%|else:\n%+%c%-', 0, 2, -2 ),
+
+    'ifandstmt':    ( '%|if(%c and %c):\n%+%c%-', 0, 3, 6),
+    'ifforstmt':( '%|if %c:\n%+%|for %c in %c:\n%+%c%-%-\n', 0, 5, 3, 6 ),
+    'ifforelsestmt':( '%|if %c:\n%+%|for %c in %c:\n%+%c%-%-\n%|else:\n%+%c%-', 0, 5, 3, 6, -3 ),
+
     'whilestmt':	( '%|while %c:\n%+%c%-\n', 1, 4 ),
     'while1stmt':	( '%|while 1:\n%+%c%-\n', 5 ),
     'whileelsestmt':	( '%|while %c:\n%+%c%-%|else:\n%+%c%-\n', 1, 4, -2 ),
@@ -416,7 +423,8 @@ class Walker(GenericASTTraversal, object):
         elif data is None:
             # LOAD_CONST 'None' only occurs, when None is
             # implicit eg. in 'return' w/o params
-            pass
+            # pass
+            self.write('None')
         else:
             self.write(repr(data))
         # LOAD_CONST is a terminal, so stop processing/recursing early
@@ -794,7 +802,7 @@ class Walker(GenericASTTraversal, object):
             self.print_("(", ", ".join(params), "):")
             #self.print_(indent, '#flags:\t', int(code.co_flags))
 
-        if code.co_consts and code.co_consts[0] != None: 
+        if len(code.co_consts)>0 and code.co_consts[0] != None: 
             # docstring exists, dump it
             self.print_docstring(indent, code.co_consts[0])
 

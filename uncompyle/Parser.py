@@ -319,25 +319,47 @@ class Parser(GenericASTBuilder):
         ifforstmt ::= expr condjmp SETUP_LOOP expr _for designator
         stmts_opt JUMP_ABSOLUTE
         COME_FROM POP_BLOCK _jump COME_FROM
+        POP_TOP COME_FROM COME_FROM
 
         _jump ::= JUMP_ABSOLUTE
         _jump ::= JUMP_FORWARD
 
-        ifstmt ::= expr condjmp stmts_opt
+        jmp_false    ::= JUMP_IF_FALSE POP_TOP
+        jmp_true    ::= JUMP_IF_TRUE  POP_TOP
+        ifstmt ::= expr jmp_false stmts_opt
                 _jump COME_FROM POP_TOP COME_FROM
 
-        ifelsestmt ::= expr condjmp stmts_opt
+        ifstmt ::= expr jmp_false stmts_opt
+                _jump COME_FROM POP_TOP COME_FROM
+
+        ifelsestmt ::= expr jmp_false stmts_opt
                 _jump COME_FROM
                 POP_TOP stmts COME_FROM
-                
+
         _25_ifstmt ::= _25_bexp _25_jumptarget_e _jump _25_jumptarget_e COME_FROM
         _25_ifelsestmt ::= _25_bexp _25_jumptarget_e _jump _25_jumptarget_s COME_FROM
-        
+
         _25_jumptarget_e ::= _25_come_froms stmts_opt
         _25_jumptarget_s ::= _25_come_froms stmts
-        
+
         _25_come_froms ::= COME_FROM _25_come_froms
         _25_come_froms ::= POP_TOP
+
+        stmt ::= ifandstmt
+        ifandstmt ::= expr JUMP_IF_FALSE POP_TOP expr JUMP_IF_FALSE POP_TOP stmt _jump COME_FROM COME_FROM POP_TOP COME_FROM
+        ifandstmt ::= expr JUMP_IF_FALSE POP_TOP expr JUMP_IF_FALSE POP_TOP stmt _jump COME_FROM COME_FROM POP_TOP
+
+        stmt ::= ifnotstmt
+        stmt ::= ifnotelsestmt
+        ifnotstmt ::= expr jmp_true stmts_opt
+                    _jump COME_FROM POP_TOP
+
+        ifnotstmt ::= expr jmp_true stmts_opt
+                    _jump COME_FROM POP_TOP COME_FROM
+
+        ifnotelsestmt ::= expr jmp_true stmts_opt
+                    _jump COME_FROM
+                    POP_TOP stmts COME_FROM
 
         trystmt ::= SETUP_EXCEPT stmts_opt
                 POP_BLOCK _jump
@@ -402,6 +424,12 @@ class Parser(GenericASTBuilder):
         forelsestmt ::= SETUP_LOOP expr _for designator
                 stmts_opt JUMP_ABSOLUTE
                 COME_FROM POP_BLOCK stmts COME_FROM
+
+        stmt ::= ifforelsestmt
+        ifforelsestmt ::= expr condjmp SETUP_LOOP expr _for designator
+        stmts_opt JUMP_ABSOLUTE
+        COME_FROM POP_BLOCK _jump COME_FROM
+        POP_TOP stmts COME_FROM COME_FROM
 
         stmt ::= ifforstmt
         ifforstmt ::= expr condjmp SETUP_LOOP expr _for designator
