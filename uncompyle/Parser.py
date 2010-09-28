@@ -81,18 +81,26 @@ class Parser(GenericASTBuilder):
         list_compr ::= BUILD_LIST_0 DUP_TOP LOAD_ATTR
                 designator list_iter del_stmt
 
+        list_compr ::= BUILD_LIST_0 DUP_TOP
+                designator list_iter del_stmt
+
         list_iter ::= list_for
         list_iter ::= list_if
         list_iter ::= lc_body
 
+        _come_from ::= COME_FROM
+        _come_from ::= 
+
         list_for ::= expr _for designator list_iter
-                JUMP_ABSOLUTE COME_FROM
+                _come_from JUMP_ABSOLUTE _come_from
         list_if ::= expr condjmp list_iter
-                _jump COME_FROM POP_TOP
-                COME_FROM
+                _jump _25_come_froms
 
         lc_body ::= LOAD_NAME expr CALL_FUNCTION_1 POP_TOP
         lc_body ::= LOAD_FAST expr CALL_FUNCTION_1 POP_TOP
+
+        lc_body ::= LOAD_NAME expr LIST_APPEND
+        lc_body ::= LOAD_FAST expr LIST_APPEND
         '''
         
     def p_augmented_assign(self, args):
