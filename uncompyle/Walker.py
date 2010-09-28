@@ -388,7 +388,10 @@ class Walker(GenericASTTraversal, object):
             while string.find(quote) >= 0:
                     string = string.replace(quote, unquote)
             return string
-        
+       
+        print docstring
+        print type(docstring)
+
         if docstring.find('\\\n') or docstring.find('\n'): # multiline string
             if docstring.find('"""') >=0:
                 quote = "'''"
@@ -814,7 +817,7 @@ class Walker(GenericASTTraversal, object):
         assert ast == 'stmts'
 
         # if docstring exists, dump it
-        if code.co_consts[0] != None \
+        if code.co_consts and code.co_consts[0] != None \
            and ast[0] == ASSIGN_DOC_STRING(code.co_consts[0]):
             #print '\n\n>>-->>doc string set\n\n'
             self.print_docstring(indent, code.co_consts[0])
