@@ -260,6 +260,11 @@ TABLE_DIRECT = {
     '_25_ifelsestmt': ( '%|if %c:\n%+%c%-%|else:\n%+%c%-', 0, 1, -2),
     '_25_jumptarget_e': ( '%c', -1),
     '_25_jumptarget_s': ( '%c', -1),
+
+    # CE - Fixes for tuples
+    '_25_assign2':     ( '(%c, %c,) = (%c, %c)\n', 3, 4, 0, 1 ),
+    '_25_assign3':     ( '(%c, %c, %c,) = (%c, %c, %c)\n', 5, 6, 7, 0, 1, 2 ),
+
 }
 
 
@@ -384,7 +389,7 @@ class Walker(GenericASTTraversal, object):
                     string = string.replace(quote, unquote)
             return string
         
-        if docstring.find('\n'): # multiline string
+        if docstring.find('\\\n') or docstring.find('\n'): # multiline string
             if docstring.find('"""') >=0:
                 quote = "'''"
             else:
@@ -546,6 +551,8 @@ class Walker(GenericASTTraversal, object):
             self.write('['); endchar = ']'
         elif lastnode.startswith('BUILD_TUPLE'):
             self.write('('); endchar = ')'
+        elif lastnode.startswith('ROT_TWO'):
+            self.write('('); endchar = ')'
         else:
             raise 'Internal Error: n_build_list expects list or tuple'
         
@@ -553,6 +560,9 @@ class Walker(GenericASTTraversal, object):
         line_seperator = ',\n' + self.indent
         sep = INDENT_PER_LEVEL[:-1]
         for elem in node:
+            if (elem == 'ROT_THREE'):
+                continue
+
             assert elem == 'expr'
             value = self.traverse(elem)
             self.write(sep, value)

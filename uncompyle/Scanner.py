@@ -170,10 +170,10 @@ class Scanner:
                 #      a tuple before calling MAKE_CLOSURE.
                 if opname == 'BUILD_TUPLE' and \
                    dis.opname[ord(code[offset-3])] == 'LOAD_CLOSURE':
-                    opname = 'CLOSURE_LIST_%d' % oparg
+                    continue
                 else:
                     opname = '%s_%d' % (opname, oparg)
-                customize[opname] = oparg
+                    customize[opname] = oparg
 
             rv.append(Token(opname, oparg, pattr, offset))
 

@@ -128,6 +128,11 @@ class Parser(GenericASTBuilder):
         stmt ::= assign
         assign ::= expr DUP_TOP designList
         assign ::= expr designator
+
+        stmt ::= _25_assign2
+        stmt ::= _25_assign3
+        _25_assign2 ::= expr expr ROT_TWO designator designator
+        _25_assign3 ::= expr expr expr ROT_THREE ROT_TWO designator designator designator
         '''
 
     def p_print(self, args):
@@ -228,7 +233,10 @@ class Parser(GenericASTBuilder):
 
         stmt ::= yield_stmt
         yield_stmt ::= expr YIELD_STMT
+        yield_stmt ::= expr YIELD_STMT POP_TOP
+
         yield_stmt ::= expr YIELD_VALUE
+        yield_stmt ::= expr YIELD_VALUE POP_TOP
 
         stmt ::= break_stmt
         break_stmt ::= BREAK_LOOP
@@ -577,11 +585,6 @@ def parse(tokens, customize):
             nak = ( len(op)-len('CALL_FUNCTION') ) / 3
             rule = 'expr ::= expr ' + 'expr '*na + 'kwarg '*nk \
                    + 'expr ' * nak + k
-        # CE - Hack for >= 2.5
-        #      Now all values loaded via LOAD_CLOSURE are packed into
-        #      a tuple before calling MAKE_CLOSURE.
-        elif op == 'CLOSURE_LIST':
-            rule = 'closure_list ::= load_closure %s' % k
         else:
             raise 'unknown customize token %s' % k
         p.addRule(rule, nop)
