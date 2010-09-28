@@ -64,12 +64,12 @@ def _load_module(filename):
     		(normally a .pyc)
     code_object: code_object from this file
     """
-    import magics, marshal_files
+    import magics, marshal
     fp = open(filename, 'rb')
     magic = fp.read(4)
     try:
         version = magics.versions[magic]
-        marshal = marshal_files.import_(magic=magic)
+        # marshal = marshal_files.import_(magic=magic)
     except KeyError:
         raise ImportError, "Unknown magic number in %s" % filename
     #print version
