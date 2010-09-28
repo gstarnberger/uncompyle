@@ -1,4 +1,4 @@
-import magics
+import uncompyle.magics as magics
 
 __all__ = ['by_version', 'by_magic']
 
@@ -25,16 +25,16 @@ class dis(object):
         return val
 
 by_version = {
-    '1.5': dis('1.5', 'dis_15'),
-    '1.6': dis('1.6', 'dis_16'),
-    '2.0': dis('2.0', 'dis_20'),
-    '2.1': dis('2.1', 'dis_21'),
-    '2.2': dis('2.2', 'dis_22'),
-    '2.3': dis('2.3', 'dis_23'),
-    '2.4': dis('2.4', 'dis_24'),
-    '2.5': dis('2.5', 'dis_25'),
-    '2.6': dis('2.6', 'dis_26'),
-    '2.7': dis('2.7', 'dis_27')
+    '1.5': dis('1.5', 'dis.dis_15'),
+    '1.6': dis('1.6', 'dis.dis_16'),
+    '2.0': dis('2.0', 'dis.dis_20'),
+    '2.1': dis('2.1', 'dis.dis_21'),
+    '2.2': dis('2.2', 'dis.dis_22'),
+    '2.3': dis('2.3', 'dis.dis_23'),
+    '2.4': dis('2.4', 'dis.dis_24'),
+    '2.5': dis('2.5', 'dis.dis_25'),
+    '2.6': dis('2.6', 'dis.dis_26'),
+    '2.7': dis('2.7', 'dis.dis_27')
 }
 
 by_magic = dict( [ (mag, by_version[ver])

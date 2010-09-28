@@ -58,7 +58,7 @@ class Scanner:
         self.__pyversion = float('%d.%d' % version_info[0:2])
 
         # use module 'dis' for this version
-        import dis_files
+        import dis.dis_files as dis_files
         self.dis = dis_files.by_version[version]
         self.resetTokenClass()
 
