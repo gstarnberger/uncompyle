@@ -15,6 +15,7 @@ TYPE_ELLIPSIS = '.'
 TYPE_INT      = 'i'
 TYPE_INT64    = 'I'
 TYPE_FLOAT    = 'f'
+TYPE_BINARY_FLOAT = 'g'
 TYPE_COMPLEX  = 'x'
 TYPE_LONG     = 'l'
 TYPE_STRING   = 's'
@@ -29,209 +30,8 @@ TYPE_UNKNOWN  = '?'
 TYPE_SET      = '<'
 TYPE_FROZENSET= '>'
 
-class _Marshaller:
-
-    dispatch = {}
-
-    def __init__(self, writefunc):
-        self._write = writefunc
-
-    def dump(self, x):
-        try:
-            self.dispatch[type(x)](self, x)
-        except KeyError:
-            for tp in type(x).mro():
-                func = self.dispatch.get(tp)
-                if func:
-                    break
-            else:
-                raise ValueError, "unmarshallable object"
-            func(self, x)
-
-    def w_long64(self, x):
-        self.w_long(x)
-        self.w_long(x>>32)
-
-    def w_long(self, x):
-        a = chr(x & 0xff)
-        x >>= 8
-        b = chr(x & 0xff)
-        x >>= 8
-        c = chr(x & 0xff)
-        x >>= 8
-        d = chr(x & 0xff)
-        self._write(a + b + c + d)
-
-    def w_short(self, x):
-        self._write(chr((x)     & 0xff))
-        self._write(chr((x>> 8) & 0xff))
-
-    def dump_none(self, x):
-        self._write(TYPE_NONE)
-    dispatch[types.NoneType] = dump_none
-
-    def dump_bool(self, x):
-        if x:
-            self._write(TYPE_TRUE)
-        else:
-            self._write(TYPE_FALSE)
-    dispatch[bool] = dump_bool
-
-    def dump_stopiter(self, x):
-        if x is not StopIteration:
-            raise ValueError, "unmarshallable object"
-        self._write(TYPE_STOPITER)
-    dispatch[type(StopIteration)] = dump_stopiter
-
-    def dump_ellipsis(self, x):
-        self._write(TYPE_ELLIPSIS)
-    
-    try:
-        dispatch[types.EllipsisType] = dump_ellipsis
-    except NameError:
-        pass
-
-    def dump_int(self, x):
-        y = x>>31
-        if y and y != -1:
-            self._write(TYPE_INT64)
-            self.w_long64(x)
-        else:
-            self._write(TYPE_INT)
-            self.w_long(x)
-    dispatch[types.IntType] = dump_int
-
-    def dump_long(self, x):
-        self._write(TYPE_LONG)
-        sign = 1
-        if x < 0:
-            sign = -1
-            x = -x
-        digits = []
-        while x:
-            digits.append(x & 0x7FFF)
-            x = x>>15
-        self.w_long(len(digits) * sign)
-        for d in digits:
-            self.w_short(d)
-    dispatch[types.LongType] = dump_long
-
-    def dump_float(self, x):
-        write = self._write
-        write(TYPE_FLOAT)
-        s = `x`
-        write(chr(len(s)))
-        write(s)
-    dispatch[types.FloatType] = dump_float
-
-    def dump_complex(self, x):
-        write = self._write
-        write(TYPE_COMPLEX)
-        s = `x.real`
-        write(chr(len(s)))
-        write(s)
-        s = `x.imag`
-        write(chr(len(s)))
-        write(s)
-    try:
-        dispatch[types.ComplexType] = dump_complex
-    except NameError:
-        pass
-
-    def dump_string(self, x):
-        # XXX we can't check for interned strings, yet,
-        # so we (for now) never create TYPE_INTERNED or TYPE_STRINGREF
-        self._write(TYPE_STRING)
-        self.w_long(len(x))
-        self._write(x)
-    dispatch[types.StringType] = dump_string
-
-    def dump_unicode(self, x):
-        self._write(TYPE_UNICODE)
-        #s = x.encode('utf8')
-        s, len_s = utf_8_encode(x)
-        self.w_long(len_s)
-        self._write(s)
-    dispatch[types.UnicodeType] = dump_unicode
-
-    def dump_tuple(self, x):
-        self._write(TYPE_TUPLE)
-        self.w_long(len(x))
-        for item in x:
-            self.dump(item)
-    dispatch[types.TupleType] = dump_tuple
-
-    def dump_list(self, x):
-        self._write(TYPE_LIST)
-        self.w_long(len(x))
-        for item in x:
-            self.dump(item)
-    dispatch[types.ListType] = dump_list
-
-    def dump_dict(self, x):
-        self._write(TYPE_DICT)
-        for key, value in x.items():
-            self.dump(key)
-            self.dump(value)
-        self._write(TYPE_NULL)
-    dispatch[types.DictionaryType] = dump_dict
-
-    def dump_code(self, x):
-        self._write(TYPE_CODE)
-        self.w_long(x.co_argcount)
-        self.w_long(x.co_nlocals)
-        self.w_long(x.co_stacksize)
-        self.w_long(x.co_flags)
-        self.dump(x.co_code)
-        self.dump(x.co_consts)
-        self.dump(x.co_names)
-        self.dump(x.co_varnames)
-        self.dump(x.co_freevars)
-        self.dump(x.co_cellvars)
-        self.dump(x.co_filename)
-        self.dump(x.co_name)
-        self.w_long(x.co_firstlineno)
-        self.dump(x.co_lnotab)
-    try:
-        dispatch[types.CodeType] = dump_code
-    except NameError:
-        pass
-
-    def dump_set(self, x):
-        self._write(TYPE_SET)
-        self.w_long(len(x))
-        for each in x:
-            self.dump(each)
-    try:
-        dispatch[set] = dump_set
-    except NameError:
-        pass
-
-    def dump_frozenset(self, x):
-        self._write(TYPE_FROZENSET)
-        self.w_long(len(x))
-        for each in x:
-            self.dump(each)
-    try:
-        dispatch[frozenset] = dump_frozenset
-    except NameError:
-        pass
-
 class _NULL:
     pass
-
-class _StringBuffer:
-    def __init__(self, value):
-        self.bufstr = value
-        self.bufpos = 0
-
-    def read(self, n):
-        pos = self.bufpos
-        newpos = pos + n
-        ret = self.bufstr[pos : newpos]
-        self.bufpos = newpos
-        return ret
-
 
 class _Unmarshaller:
 
@@ -332,6 +132,68 @@ class _Unmarshaller:
         s = self._read(n)
         return float(s)
     dispatch[TYPE_FLOAT] = load_float
+
+    def load_binary_float(self):
+        # From: http://billyearney-skulpt.googlecode.com/hg/src/skc1.py
+
+        # bleh, straight port of PyFloat_Unpack8. not sure if it's right at
+        # all, but works for simple stuff
+        data = self._read(8)
+        off = 7
+
+        # First byte
+        sign = (ord(data[off]) >> 7) & 1
+        e = (ord(data[off]) & 0x7f) << 4
+        off -= 1
+
+        # Second byte
+        e |= ord(data[off]) >> 4 & 0xf
+        fhi = (ord(data[off]) & 0xf) << 24
+        off -= 1
+
+        if e == 2047:
+            raise ValueError("can't unpack IEEE 754 special value")
+
+        # Third byte
+        fhi |= ord(data[off]) << 16
+        off -= 1
+
+        # Fourth byte
+        fhi |= ord(data[off]) << 8
+        off -= 1
+
+        # Fifth byte
+        fhi |= ord(data[off])
+        off -= 1
+
+        # Sixth byte
+        flo = ord(data[off]) << 16
+        off -= 1
+
+        # Seventh byte
+        flo |= ord(data[off]) << 8
+        off -= 1
+
+        # Eighth byte
+        flo |= ord(data[off])
+
+        x = float(fhi) + float(flo) / 16777216.0 # 2**24
+        x /= 268435456.0 # 2**28
+
+        if e == 0:
+            e = -1022
+        else:
+            x += 1.0
+            e -= 1023
+
+        # x = ldexp(x, e)
+        x = x * (2**e)
+
+        if sign:
+            x = -x
+
+        return x
+    dispatch[TYPE_BINARY_FLOAT] = load_binary_float
 
     def load_complex(self):
         n = ord(self._read(1))
@@ -645,21 +507,9 @@ _load_dispatch = _FastUnmarshaller.dispatch
 
 version = 1
 
-def dump(x, f, version=version):
-    # XXX 'version' is ignored, we always dump in a version-0-compatible format
-    m = _Marshaller(f.write)
-    m.dump(x)
-
 def load(f):
     um = _Unmarshaller(f.read)
     return um.load()
-
-def dumps(x, version=version):
-    # XXX 'version' is ignored, we always dump in a version-0-compatible format
-    buffer = []
-    m = _Marshaller(buffer.append)
-    m.dump(x)
-    return ''.join(buffer)
 
 def loads(s):
     um = _FastUnmarshaller(s)
