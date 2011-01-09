@@ -193,7 +193,9 @@ TABLE_DIRECT = {
     'cmp_list2':	( '%[1]{pattr} %c', 0),
 #   'classdef': 	(), # handled by n_classdef()
     'funcdef':  	( '\n%|def %c\n', -2), # -2 to handle closures
-    'funcdefdeco':  	( '\n%|@%c\n%|def %c\n', 0, 1), # -2 to handle closures
+    'funcdefdeco':  	( '%c', 0), # -2 to handle closures
+    'mkfuncdeco':  	( '\n%|@%c%c', 0, 1), # -2 to handle closures
+    'mkfuncdeco0':  	( '\n%|def %c\n', 0), # -2 to handle closures
     'kwarg':    	( '%[0]{pattr}=%c', 1),
     'importstmt':	( '%|import %[0]{pattr}\n', ),
     'importfrom':	( '%|from %[0]{pattr} import %c\n', 1 ),
@@ -552,7 +554,7 @@ class Walker(GenericASTTraversal, object):
 
         ast = self.build_ast(code._tokens, code._customize)
         ast = ast[0][0][0]
-        assert (ast == 'genexpr_func') or (ast == 'genexpr_func2')
+        assert str(ast)[:7] == 'genexpr'
         self.write('(')
         self.preorder(ast[-5])
         self.write(' for ')
@@ -561,6 +563,9 @@ class Walker(GenericASTTraversal, object):
         self.preorder(node[-3])
         if ast == 'genexpr_func2':
             self.write(' if ')
+            self.preorder(ast[3])
+        if ast == 'genexpr_func3':
+            self.write(' if not ')
             self.preorder(ast[3])
         self.write(')')
             
@@ -650,6 +655,8 @@ class Walker(GenericASTTraversal, object):
             self.write('['); endchar = ']'
         elif lastnode.startswith('BUILD_TUPLE'):
             self.write('('); endchar = ')'
+        elif lastnode.startswith('BUILD_SET'):
+            self.write('{'); endchar = '}'
         elif lastnode.startswith('ROT_TWO'):
             self.write('('); endchar = ')'
         else:
@@ -992,8 +999,17 @@ class Walker(GenericASTTraversal, object):
                 tokens.append(Token('LOAD_CONST'))
                 tokens.append(Token('RETURN_VALUE'))
                 ast = Parser.parse(tokens, customize)
-            except Parser.ParserError, e:      
+            except Parser.ParserError, e:  
+                try:    
+                    del tokens[-2:]
+                    Parser.p.addRule('stmt ::= return_stmt', Parser.nop)
+                    ast = Parser.parse(tokens, customize)
+                except:
                     raise ParserError(e, tokens)
+                finally:
+                    Parser.p.cleanup()
+                    Parser.p = Parser.Parser()
+
 
         if self.showast:
             self.print_(repr(ast))
