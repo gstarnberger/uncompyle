@@ -72,7 +72,10 @@ class Parser(GenericASTBuilder):
         stmt ::= funcdef
         funcdef ::= mkfunc designator
         stmt ::= funcdefdeco
-        funcdefdeco ::= expr mkfunc CALL_FUNCTION_1 designator
+        funcdefdeco ::= mkfuncdeco designator
+        mkfuncdeco ::= expr mkfuncdeco CALL_FUNCTION_1
+        mkfuncdeco ::= expr mkfuncdeco0 CALL_FUNCTION_1
+        mkfuncdeco0 ::= mkfunc
         load_closure ::= load_closure LOAD_CLOSURE
         load_closure ::= LOAD_CLOSURE
         '''
@@ -110,11 +113,15 @@ class Parser(GenericASTBuilder):
         
         stmt ::= genexpr_func
         stmt ::= genexpr_func2
+        stmt ::= genexpr_func3
         
         genexpr_func ::= LOAD_FAST FOR_ITER designator expr YIELD_VALUE POP_TOP
                 JUMP_BACK COME_FROM
         genexpr_func2 ::= LOAD_FAST FOR_ITER designator expr
             jmp_false expr YIELD_VALUE POP_TOP
+                JUMP_BACK COME_FROM
+        genexpr_func3 ::= LOAD_FAST FOR_ITER designator expr
+            jmp_true expr YIELD_VALUE POP_TOP
                 JUMP_BACK COME_FROM
         '''
 
@@ -122,7 +129,7 @@ class Parser(GenericASTBuilder):
     def p_dictcomp(self, args):
         '''
         expr ::= dictcomp
-        
+        dictcomp ::= LOAD_DICTCOMP MAKE_FUNCTION_0 expr GET_ITER CALL_FUNCTION_1
         stmt ::= dictcomp_func
         stmt ::= dictcomp_func2
         
@@ -686,7 +693,7 @@ def parse(tokens, customize):
 
         #nop = lambda self, args: None
         op = k[:string.rfind(k, '_')]
-        if op in ('BUILD_LIST', 'BUILD_TUPLE'):
+        if op in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SET'):
             rule = 'build_list ::= ' + 'expr '*v + k
         elif op == 'BUILD_SLICE':
             rule = 'expr ::= ' + 'expr '*v + k
@@ -700,8 +707,6 @@ def parse(tokens, customize):
             #rule = 'dup_topx ::= ' + 'expr '*v + k
         elif op == 'MAKE_FUNCTION':
             p.addRule('mklambda ::= %s LOAD_LAMBDA %s' %
-                  ('expr '*v, k), nop)
-            p.addRule('mkfuncdeco ::= LOAD_NAME %s LOAD_CONST %s CALL_FUNCTION_1' %
                   ('expr '*v, k), nop)
             rule = 'mkfunc ::= %s LOAD_CONST %s' % ('expr '*v, k)
         elif op == 'MAKE_CLOSURE':
@@ -722,7 +727,7 @@ def parse(tokens, customize):
             rule = 'expr ::= expr ' + 'expr '*na + 'kwarg '*nk \
                    + 'expr ' * nak + k
         else:
-            raise 'unknown customize token %s' % k
+            raise Exception('unknown customize token %s' % k)
         p.addRule(rule, nop)
     ast = p.parse(tokens)
 #    p.cleanup()

@@ -203,7 +203,7 @@ class Scanner:
 
             if opname == 'SET_LINENO':
                 continue
-            elif opname in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SLICE',
+            elif opname in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SLICE', 'BUILD_SET',
                             'UNPACK_LIST', 'UNPACK_TUPLE', 'UNPACK_SEQUENCE',
                             'MAKE_FUNCTION', 'CALL_FUNCTION', 'MAKE_CLOSURE',
                             'CALL_FUNCTION_VAR', 'CALL_FUNCTION_KW',
@@ -561,7 +561,7 @@ class Scanner:
             if not jump_back:
                 return
                 
-            if end > (jump_back+4) and ord(code[jump_back+4]) == JUMP_FORWARD:
+            if end > (jump_back+4) and (ord(code[jump_back+4]) in (JUMP_ABSOLUTE, JUMP_FORWARD)):
                 self.__fixed_jumps[pos] = jump_back+4
                 end = jump_back+4
             target = self.__get_target(code, jump_back, JUMP_ABSOLUTE)
@@ -709,24 +709,6 @@ class Scanner:
                         return
                         
                 end = self.__restrict_to_parent(if_end, parent)
-                if if_end != end:
-                    if (((ord(code[self.prev[self.prev[rtarget]]]) == JUMP_ABSOLUTE) and (self.__get_target(code, self.prev[rtarget]) == target)
-                         and (self.__get_target(code, rtarget) != target) and (ord(code[target]) == FOR_ITER))
-                        or (((ord(code[self.prev[self.prev[rtarget]]]) == JUMP_FORWARD) and (self.__get_target(code, self.prev[self.prev[rtarget]]) == rtarget)
-                            and (ord(code[self.prev[rtarget]]) == JUMP_ABSOLUTE) and (self.__get_target(code, self.prev[rtarget]) == target)))):
-                            rtarget = self.prev[rtarget]
-                            self.__end_if_line[start] = rtarget
-                            self.__structs.append({'type':  'if-then',
-                                                   'start': start,
-                                                   'end':   self.prev[rtarget]})
-
-                            if rtarget < end:
-                                self.__structs.append({'type':  'if-else',
-                                                   'start': rtarget,
-                                                   'end':   end})
-                            return
-                            
-
                                                        
                 self.__end_if_line[start] = rtarget
 
