@@ -1,4 +1,4 @@
-import uncompyle.magics as magics
+import uncompyle2.magics as magics
 
 __all__ = ['by_version', 'by_magic']
 
@@ -11,8 +11,8 @@ class dis(object):
     def __init__(self, version, module):
         self._version = version
         from __builtin__ import __import__
-        self._module = __import__('uncompyle.%s' % module, globals(),
-                                  locals(), 'uncompyle')
+        self._module = __import__('uncompyle2.%s' % module, globals(),
+                                  locals(), 'uncompyle2')
 
     def __getattr__(self, attr):
         try:

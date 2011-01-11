@@ -71,7 +71,7 @@ def _load_module(filename):
         version = magics.versions[magic]
         # marshal = marshal_files.import_(magic=magic)
     except KeyError:
-#        raise ImportError, "Unknown magic number in %s" % filename
+        raise ImportError, "Unknown magic number in %s" % filename
         version = '2.7'
     #print version
     fp.read(4) # timestamp

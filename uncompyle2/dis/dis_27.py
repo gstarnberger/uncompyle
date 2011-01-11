@@ -3,8 +3,8 @@
 import sys
 import types
 
-from uncompyle.opcode.opcode_27 import *
-from uncompyle.opcode.opcode_27 import __all__ as _opcodes_all
+from uncompyle2.opcode.opcode_27 import *
+from uncompyle2.opcode.opcode_27 import __all__ as _opcodes_all
 
 __all__ = ["dis", "disassemble", "distb", "disco",
            "findlinestarts", "findlabels"] + _opcodes_all

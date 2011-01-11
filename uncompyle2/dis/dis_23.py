@@ -3,8 +3,8 @@
 import sys
 import types
 
-from uncompyle.opcode.opcode_23 import *
-from uncompyle.opcode.opcode_23 import __all__ as _opcodes_all
+from uncompyle2.opcode.opcode_23 import *
+from uncompyle2.opcode.opcode_23 import __all__ as _opcodes_all
 
 __all__ = ["dis","disassemble","distb","disco"] + _opcodes_all
 del _opcodes_all
