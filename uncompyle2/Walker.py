@@ -227,6 +227,7 @@ TABLE_DIRECT = {
     'return_lambda':	( '%c', 0),
 
     'ifstmt':		( '%|if %c:\n%+%c%-', 0, 1 ),
+    'iflaststmt':		( '%|if %c:\n%+%c%-', 0, 1 ),
     'testtrue':     ( 'not %c', 0 ),
     'ifstmt_oneline':		( '%|if %c:\n%+%c%-', 0, 1 ),
     'ifstmt_oneline2':		( '%|if %c and %c:\n%+%c%-', 0, 2, 4 ),
