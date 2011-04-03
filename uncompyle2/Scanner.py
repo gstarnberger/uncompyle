@@ -105,16 +105,18 @@ class Scanner:
         Token = self.Token # shortcut
         code = co.co_code
         n = len(code)
-        self.prev = {}
+        self.prev = [0]
         i=0
         while i < n:
             c = code[i]
             op = ord(code[i])
             if op >= dis.HAVE_ARGUMENT:
-                self.prev[i+3] = i
+                self.prev.append(i)
+                self.prev.append(i)
+                self.prev.append(i)
                 i = i + 3
             else:
-                self.prev[i+1] = i
+                self.prev.append(i)
                 i = i + 1
                 
         self.lines = []
@@ -126,7 +128,7 @@ class Scanner:
             while j < start_byte:
                 self.lines.append((prev_line_no, start_byte))
                 j += 1
-            last_opname = dis.opname[ord(code[start_byte-3])]
+            last_opname = dis.opname[ord(code[self.prev[start_byte]])]
             if last_opname in ('POP_JUMP_IF_FALSE', 'POP_JUMP_IF_TRUE'):
                 self.if_lines[prev_line_no] = True
             else:
@@ -658,6 +660,8 @@ class Scanner:
             if (ord(code[self.prev[target]]) in (JUMP_IF_FALSE_OR_POP, JUMP_IF_TRUE_OR_POP,
                     POP_JUMP_IF_FALSE, POP_JUMP_IF_TRUE)) and (target > pos):  
                 self.__fixed_jumps[pos] = self.prev[target]
+                if op == POP_JUMP_IF_TRUE:
+                    self.pjit_tgt[self.prev[target]] = True
                 return
             #is this not at the end of a line
             if line_no == self.lines[start][0]:
@@ -678,18 +682,33 @@ class Scanner:
 #                    self.__fixed_jumps[pos] = rtarget
                 return
                     
-            
             if op == POP_JUMP_IF_FALSE:
                 i = self.lines[next_line_byte][0]
                 j = next_line_byte
                 while (self.if_lines.get(i, False)
-                       and (self.__get_target(code, self.lines[j][1]-3) == target)):
+            #           and (not self.pjit_tgt.get(j-3, False))):
+                       and ((self.__get_target(code, self.lines[j][1]-3) == target)
+                            or ((ord(code[self.lines[j][1]-3]) == POP_JUMP_IF_TRUE)
+                                and (ord(code[self.__get_target(code, self.lines[j][1]-3)-3]) == POP_JUMP_IF_FALSE)
+                                and (self.__get_target(code, self.__get_target(code, self.lines[j][1]-3)-3) == target)))):
                        j = self.lines[j][1]
                        i = self.lines[j][0]
                 if j > next_line_byte:
                     self.__fixed_jumps[pos] = j-3
                     return
-
+            elif op == POP_JUMP_IF_TRUE and target > pos:
+                i = self.lines[next_line_byte][0]
+                j = next_line_byte
+                while (self.if_lines.get(i, False)
+            #           and (not self.pjit_tgt.get(j-3, False))):
+                       and ((self.__get_target(code, self.lines[j][1]-3) == target)
+                            and (ord(code[self.lines[j][1]-3]) == POP_JUMP_IF_TRUE))):
+                       j = self.lines[j][1]
+                       i = self.lines[j][0]
+                if j > next_line_byte:
+                    self.__fixed_jumps[pos] = j-3
+                    return
+                
             if (target < pos) and ((ord(code[target]) == FOR_ITER) or (ord(code[self.prev[target]]) == SETUP_LOOP)):
                 self.__end_if_line[start] = 0
                 if ord(code[self.prev[end]]) == JUMP_ABSOLUTE:
@@ -756,6 +775,7 @@ class Scanner:
         self.__fixed_jumps = {} ## Map fixed jumps to their real destination
         self.__ignored_ifs = [] ## JUMP_IF_XXXX's we should ignore
         self.__end_if_line = {}
+        self.pjit_tgt = {}
         POP_JUMP_IF_FALSE = self.dis.opmap['POP_JUMP_IF_FALSE']
         POP_JUMP_IF_TRUE  = self.dis.opmap['POP_JUMP_IF_TRUE']
         JUMP_IF_FALSE_OR_POP = self.dis.opmap['JUMP_IF_FALSE_OR_POP']
