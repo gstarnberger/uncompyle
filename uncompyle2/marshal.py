@@ -17,6 +17,7 @@ TYPE_INT64    = 'I'
 TYPE_FLOAT    = 'f'
 TYPE_BINARY_FLOAT = 'g'
 TYPE_COMPLEX  = 'x'
+TYPE_BINARY_COMPLEX = 'y'
 TYPE_LONG     = 'l'
 TYPE_STRING   = 's'
 TYPE_INTERNED = 't'
@@ -204,6 +205,10 @@ class _Unmarshaller:
         imag = float(s)
         return complex(real, imag)
     dispatch[TYPE_COMPLEX] = load_complex
+
+    def load_binary_complex(self):
+        return complex(self.load_binary_float(), self.load_binary_float())
+    dispatch[TYPE_BINARY_COMPLEX] = load_binary_complex
 
     def load_string(self):
         n = self.r_long()

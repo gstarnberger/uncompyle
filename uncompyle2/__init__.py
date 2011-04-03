@@ -29,6 +29,7 @@
 import sys, types, os
 import Scanner, Walker, verify, magics
 
+sys.setrecursionlimit(5000)
 __all__ = ['uncompyle_file', 'uncompyle_file', 'main']
 
 TABWIDTH=4

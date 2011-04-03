@@ -193,9 +193,11 @@ TABLE_DIRECT = {
     'cmp_list2':	( '%[1]{pattr} %c', 0),
 #   'classdef': 	(), # handled by n_classdef()
     'funcdef':  	( '\n%|def %c\n', -2), # -2 to handle closures
-    'funcdefdeco':  	( '%c', 0), # -2 to handle closures
-    'mkfuncdeco':  	( '\n%|@%c%c', 0, 1), # -2 to handle closures
-    'mkfuncdeco0':  	( '\n%|def %c\n', 0), # -2 to handle closures
+    'funcdefdeco':  	( '%c', 0), 
+    'mkfuncdeco':  	( '\n%|@%c%c', 0, 1), 
+    'mkfuncdeco0':  	( '\n%|def %c\n', 0), 
+    'classdefdeco':  	( '%c', 0), 
+    'classdefdeco1':  	( '\n%|@%c%c', 0, 1), 
     'kwarg':    	( '%[0]{pattr}=%c', 1),
     'importstmt':	( '%|import %[0]{pattr}\n', ),
     'importfrom':	( '%|from %[0]{pattr} import %c\n', 1 ),
@@ -557,17 +559,27 @@ class Walker(GenericASTTraversal, object):
         ast = ast[0][0][0]
         assert str(ast)[:7] == 'genexpr'
         self.write('(')
-        self.preorder(ast[-5])
+        if ast == 'genexpr_func_for':
+            self.preorder(ast[7])
+        else:
+            self.preorder(ast[-5])
         self.write(' for ')
         self.preorder(ast[2])
         self.write(' in ')
         self.preorder(node[-3])
-        if ast == 'genexpr_func2':
-            self.write(' if ')
+        if ast == 'genexpr_func_if':
+            if ast[4] == 'jmp_false':
+                self.write(' if ')
+                self.preorder(ast[3])
+            else:
+                self.write(' if not ')
+                self.preorder(ast[3])
+        elif ast == 'genexpr_func_for':
+            self.write(' for ')
+            self.preorder(ast[6])
+            self.write(' in ')
             self.preorder(ast[3])
-        if ast == 'genexpr_func3':
-            self.write(' if not ')
-            self.preorder(ast[3])
+       
         self.write(')')
             
         self.prune()
@@ -611,6 +623,20 @@ class Walker(GenericASTTraversal, object):
         # class body
         self.indentMore()
         self.build_class(node[-4][-2].attr)
+        self.indentLess()
+        self.prune()
+
+    def n_classdefdeco2(self, node):
+        # class definition ('class X(A,B,C):')
+        self.print_()
+        self.write(self.indent, 'class ', str(node[0].pattr))
+        if node[1] != BUILD_TUPLE_0: # this is a subclass
+            self.preorder(node[1]) # output superclasses
+        self.print_(':')
+
+        # class body
+        self.indentMore()
+        self.build_class(node[-3][-2].attr)
         self.indentLess()
         self.prune()
 
