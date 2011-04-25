@@ -524,8 +524,7 @@ class Scanner:
         POP_TOP       = self.dis.opmap['POP_TOP']
         RETURN_VALUE = self.dis.opmap['RETURN_VALUE']
         CONTINUE_LOOP = self.dis.opmap['CONTINUE_LOOP']
-        try:    SET_LINENO = self.dis.opmap['SET_LINENO']
-        except: SET_LINENO = None
+        LOAD_ATTR = self.dis.opmap['LOAD_ATTR']
 
         # Ev remove this test and make op a mandatory argument -Dan
         if op is None:
@@ -684,17 +683,20 @@ class Scanner:
                     
             if op == POP_JUMP_IF_FALSE:
                 i = self.lines[next_line_byte][0]
-                j = next_line_byte
-                while (self.if_lines.get(i, False)
+                k = j = next_line_byte
+                while ((self.if_lines.get(i, False)
             #           and (not self.pjit_tgt.get(j-3, False))):
                        and ((self.__get_target(code, self.lines[j][1]-3) == target)
                             or ((ord(code[self.lines[j][1]-3]) == POP_JUMP_IF_TRUE)
                                 and (ord(code[self.__get_target(code, self.lines[j][1]-3)-3]) == POP_JUMP_IF_FALSE)
-                                and (self.__get_target(code, self.__get_target(code, self.lines[j][1]-3)-3) == target)))):
+                                and (self.__get_target(code, self.__get_target(code, self.lines[j][1]-3)-3) == target))))
+                        or (ord(code[self.lines[j][1]-3]) == LOAD_ATTR)):
                        j = self.lines[j][1]
                        i = self.lines[j][0]
-                if j > next_line_byte:
-                    self.__fixed_jumps[pos] = j-3
+                       if not (ord(code[j-3]) == LOAD_ATTR):
+                          k = j
+                if k > next_line_byte:
+                    self.__fixed_jumps[pos] = k-3
                     return
             elif op == POP_JUMP_IF_TRUE and target > pos:
                 i = self.lines[next_line_byte][0]
