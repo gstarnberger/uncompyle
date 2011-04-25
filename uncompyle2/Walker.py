@@ -596,9 +596,9 @@ class Walker(GenericASTTraversal, object):
         ast = ast[0][0][0]
         assert (ast == 'dictcomp_func') or (ast == 'dictcomp_func2')
         self.write('{')
-        self.preorder(ast[-6])
-        self.write(':')
         self.preorder(ast[-5])
+        self.write(':')
+        self.preorder(ast[-6])
         self.write(' for ')
         self.preorder(ast[3])
         self.write(' in ')
