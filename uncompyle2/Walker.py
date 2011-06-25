@@ -170,9 +170,18 @@ TABLE_DIRECT = {
     #'list_compr':	( '[ %c ]', -2),	# handled by n_list_compr
     'list_iter':	( '%c', 0),
     'list_for':		( ' for %c in %c%c', 2, 0, 3 ),
-    'list_if':		( ' if %c%c', 0, 2 ),
-    'list_if_not':		( ' if not(%c)%c', 0, 2 ),
+    'list_if':		( ' if %c%c', 0, 3 ),
+    'list_if_not':		( ' if not(%c)%c', 0, 3 ),
     'lc_body':		( '', ),	# ignore when recusing
+
+    'comp_iter':	( '%c', 0),
+    'comp_for':		( ' for %c in %c%c', 2, 0, 3 ),
+    'comp_if':		( ' if %c%c', 0, 2 ),
+    'comp_ifnot':	( ' if not(%c)%c', 0, 2 ),
+    'comp_body':	( '', ),	# ignore when recusing
+    'set_comp_body':    ( '%c', 0 ),
+    'gen_comp_body':    ( '%c', 0 ),
+    'dict_comp_body':   ( '%c:%c', 1, 0 ),
     
     'assign':		( '%|%c = %c\n', -1, 0 ),
     'augassign1':	( '%|%c %c %c\n', 0, 2, 1),
@@ -495,22 +504,6 @@ class Walker(GenericASTTraversal, object):
         self.print_()
         self.prune() # stop recursing
             
-    def n_list_compr(self, node):
-        n = node[-1]
-        assert n == 'list_iter'
-        # find innerst node
-        while n == 'list_iter':
-            n = n[0] # recurse one step
-            if   n == 'list_for':	n = n[3]
-            elif n == 'list_if':	n = n[3]
-            elif n == 'list_if_not': n= n[3]
-        assert n == 'lc_body'
-        self.write( '[ '); 
-        self.preorder(n[0]) # lc_body
-        self.preorder(node[-1]) # for/if parts
-        self.write( ' ]')
-        self.prune() # stop recursing
-       
     def n_ifelsestmt(self, node, preprocess=0):
         if len(node[3]) == 1:
             ifnode = node[3][0][0][0]
@@ -548,7 +541,23 @@ class Walker(GenericASTTraversal, object):
         self.make_function(node, isLambda=1)
         self.prune() # stop recursing
 
-    def n_genexpr(self, node):
+    def n_list_compr(self, node):
+        n = node[-1]
+        assert n == 'list_iter'
+        # find innerst node
+        while n == 'list_iter':
+            n = n[0] # recurse one step
+            if   n == 'list_for':	n = n[3]
+            elif n == 'list_if':	n = n[3]
+            elif n == 'list_if_not': n= n[3]
+        assert n == 'lc_body'
+        self.write( '[ '); 
+        self.preorder(n[0]) # lc_body
+        self.preorder(node[-1]) # for/if parts
+        self.write( ' ]')
+        self.prune() # stop recursing
+
+    def comprehension_walk(self, node, iter_index):
         code = node[-5].attr
 
         assert type(code) == CodeType
@@ -557,59 +566,44 @@ class Walker(GenericASTTraversal, object):
 
         ast = self.build_ast(code._tokens, code._customize)
         ast = ast[0][0][0]
-        assert str(ast)[:7] == 'genexpr'
-        self.write('(')
-        if ast == 'genexpr_func_for':
-            self.preorder(ast[7])
-        else:
-            self.preorder(ast[-5])
+        
+        n = ast[iter_index]
+        assert n == 'comp_iter'
+        # find innerst node
+        while n == 'comp_iter':
+            n = n[0] # recurse one step
+            if   n == 'comp_for':	n = n[3]
+            elif n == 'comp_if':	n = n[2]
+            elif n == 'comp_ifnot': n = n[2]
+        assert n == 'comp_body', ast
+
+        self.preorder(n[0])
         self.write(' for ')
-        self.preorder(ast[2])
+        self.preorder(ast[iter_index-1])
         self.write(' in ')
         self.preorder(node[-3])
-        if ast == 'genexpr_func_if':
-            if ast[4] == 'jmp_false':
-                self.write(' if ')
-                self.preorder(ast[3])
-            else:
-                self.write(' if not ')
-                self.preorder(ast[3])
-        elif ast == 'genexpr_func_for':
-            self.write(' for ')
-            self.preorder(ast[6])
-            self.write(' in ')
-            self.preorder(ast[3])
-       
+        self.preorder(ast[iter_index])
+
+    def n_genexpr(self, node):
+        self.write('(')
+        self.comprehension_walk(node, 3)
         self.write(')')
-            
         self.prune()
         
+
+    def n_setcomp(self, node):
+        self.write('{')
+        self.comprehension_walk(node, 4)
+        self.write('}')
+        self.prune()
+
 
     def n_dictcomp(self, node):
-        code = node[-5].attr
-
-        assert type(code) == CodeType
-        code = Code(code, self.scanner)
-        #assert isinstance(code, Code)
-
-        ast = self.build_ast(code._tokens, code._customize)
-        ast = ast[0][0][0]
-        assert (ast == 'dictcomp_func') or (ast == 'dictcomp_func2')
         self.write('{')
-        self.preorder(ast[-5])
-        self.write(':')
-        self.preorder(ast[-6])
-        self.write(' for ')
-        self.preorder(ast[3])
-        self.write(' in ')
-        self.preorder(node[-3])
-        if ast == 'dictcomp_func2':
-            self.write(' if ')
-            self.preorder(ast[4])
+        self.comprehension_walk(node, 4)
         self.write('}')
-            
         self.prune()
-        
+       
 
     def n_classdef(self, node):
         # class definition ('class X(A,B,C):')

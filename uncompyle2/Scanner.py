@@ -180,6 +180,8 @@ class Scanner:
                             opname = 'LOAD_GENEXPR'
                         elif const.co_name == '<dictcomp>':
                             opname = 'LOAD_DICTCOMP'
+                        elif const.co_name == '<setcomp>':
+                            opname = 'LOAD_SETCOMP'
                         # verify uses 'pattr' for comparism, since 'attr'
                         # now holds Code(const) and thus can not be used
                         # for comparism (todo: think about changing this)
