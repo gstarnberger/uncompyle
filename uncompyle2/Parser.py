@@ -105,6 +105,34 @@ class Parser(GenericASTBuilder):
         lc_body ::= expr LIST_APPEND
         '''
         
+    def p_setcomp(self, args):
+        '''
+        expr ::= setcomp
+        
+        setcomp ::= LOAD_SETCOMP MAKE_FUNCTION_0 expr GET_ITER CALL_FUNCTION_1
+        
+        stmt ::= setcomp_func
+        
+        setcomp_func ::= BUILD_SET_0 LOAD_FAST FOR_ITER designator comp_iter
+                JUMP_BACK COME_FROM RETURN_VALUE
+        
+        comp_iter ::= comp_if
+        comp_iter ::= comp_ifnot
+        comp_iter ::= comp_for
+        comp_iter ::= comp_body
+        comp_body ::= set_comp_body
+        comp_body ::= gen_comp_body
+        comp_body ::= dict_comp_body
+        set_comp_body ::= expr SET_ADD
+        gen_comp_body ::= expr YIELD_VALUE POP_TOP
+        dict_comp_body ::= expr expr MAP_ADD
+
+        comp_if ::= expr jmp_false comp_iter
+        comp_ifnot ::= expr jmp_true comp_iter
+        comp_for ::= expr _for designator comp_iter JUMP_BACK COME_FROM
+        '''
+
+
     def p_genexpr(self, args):
         '''
         expr ::= genexpr
@@ -112,19 +140,8 @@ class Parser(GenericASTBuilder):
         genexpr ::= LOAD_GENEXPR MAKE_FUNCTION_0 expr GET_ITER CALL_FUNCTION_1
         
         stmt ::= genexpr_func
-        stmt ::= genexpr_func_if
-        stmt ::= genexpr_func_for
         
-        genexpr_func ::= LOAD_FAST FOR_ITER designator expr YIELD_VALUE POP_TOP
-                JUMP_BACK COME_FROM
-        genexpr_func_if ::= LOAD_FAST FOR_ITER designator expr
-            jmp_false expr YIELD_VALUE POP_TOP
-                JUMP_BACK COME_FROM
-        genexpr_func_if ::= LOAD_FAST FOR_ITER designator expr
-            jmp_true expr YIELD_VALUE POP_TOP
-                JUMP_BACK COME_FROM
-        genexpr_func_for ::= LOAD_FAST FOR_ITER designator expr GET_ITER FOR_ITER designator expr YIELD_VALUE POP_TOP
-                JUMP_BACK COME_FROM JUMP_BACK COME_FROM
+        genexpr_func ::= LOAD_FAST FOR_ITER designator comp_iter JUMP_BACK COME_FROM
         '''
 
 
@@ -133,13 +150,9 @@ class Parser(GenericASTBuilder):
         expr ::= dictcomp
         dictcomp ::= LOAD_DICTCOMP MAKE_FUNCTION_0 expr GET_ITER CALL_FUNCTION_1
         stmt ::= dictcomp_func
-        stmt ::= dictcomp_func2
         
-        dictcomp_func ::= BUILD_MAP LOAD_FAST FOR_ITER designator
-                expr expr MAP_ADD JUMP_BACK COME_FROM RETURN_VALUE
+        dictcomp_func ::= BUILD_MAP LOAD_FAST FOR_ITER designator comp_iter JUMP_BACK COME_FROM RETURN_VALUE
 
-        dictcomp_func2 ::= BUILD_MAP LOAD_FAST FOR_ITER designator
-                expr jmp_false expr expr MAP_ADD JUMP_BACK COME_FROM RETURN_VALUE
         '''
 
 
