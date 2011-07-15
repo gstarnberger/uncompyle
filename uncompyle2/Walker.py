@@ -24,7 +24,7 @@
 #  Escapes in the format string are:
 #
 #	%c	evaluate N[A] recursively*
-#	%C	evaluate N[A[0]]..N[A[1]] recursively, separate by A[2]*
+#	%C	evaluate N[A[0]]..N[A[1]-1] recursively, separate by A[2]*
 #	%,	print ',' if last %C only printed one item (for tuples--unused)
 #	%|	tab to current indentation level
 #	%+	increase current indentation level
@@ -63,6 +63,11 @@ RETURN_NONE = AST('stmt',
 		  [ AST('return_stmt',
 			[ NONE, Token('RETURN_VALUE')]) ])
 
+PASS = AST('stmts',
+          [ AST('sstmt',
+              [ AST('stmt',
+                  [ AST('passstmt', [])])])])
+
 ASSIGN_DOC_STRING = lambda doc_string: \
 	AST('stmt',
 	    [ AST('assign',
@@ -93,24 +98,12 @@ TABLE_R = {
     'STORE_SLICE+1':	( '%c[%c:]', 0, 1 ),
     'STORE_SLICE+2':	( '%c[:%c]', 0, 1 ),
     'STORE_SLICE+3':	( '%c[%c:%c]', 0, 1, 2 ),
-    'JUMP_ABSOLUTE':	( '%|continue\n', ),
     'DELETE_SLICE+0':	( '%|del %c[:]\n', 0 ),
     'DELETE_SLICE+1':	( '%|del %c[%c:]\n', 0, 1 ),
     'DELETE_SLICE+2':	( '%|del %c[:%c]\n', 0, 1 ),
     'DELETE_SLICE+3':	( '%|del %c[%c:%c]\n', 0, 1, 2 ),
     'DELETE_ATTR':	( '%|del %c.%[-1]{pattr}\n', 0 ),
 #   'EXEC_STMT':	( '%|exec %c in %[1]C\n', 0, (0,sys.maxint,', ') ),
-    'BINARY_SUBSCR':	( '%c[%c]', 0, 1), # required for augmented assign
-    'UNARY_POSITIVE':	( '+%c', 0 ),
-    'UNARY_NEGATIVE':	( '-%c', 0 ),
-    'UNARY_CONVERT':	( '`%c`', 0 ),
-    'UNARY_INVERT':	( '~%c', 0 ),
-    'UNARY_NOT':	( '(not %c)', 0 ),
-    'GET_ITER':	( 'iter(%c)', 0 ),
-    'SLICE+0':		( '%c[:]', 0 ),
-    'SLICE+1':		( '%c[%c:]', 0, 1 ),
-    'SLICE+2':		( '%c[:%c]', 0, 1 ),
-    'SLICE+3':		( '%c[%c:%c]', 0, 1, 2 ),
 }
 TABLE_R0 = {
 #    'BUILD_LIST':	( '[%C]',      (0,-1,', ') ),
@@ -144,21 +137,36 @@ TABLE_DIRECT = {
     'INPLACE_AND':	( '&=' ,),
     'INPLACE_OR':	( '|=' ,),
     'INPLACE_XOR':	( '^=' ,),
-    'binary_expr':	( '(%c %c %c)', 0, -1, 1 ),
+    'binary_expr':	( '%c %c %c', 0, -1, 1 ),
+    
+    'UNARY_POSITIVE':	( '+',),
+    'UNARY_NEGATIVE':	( '-',),
+    'UNARY_INVERT':	( '~%c'),
+    'unary_expr':   ( '%c%c', 1, 0),
+    
+    'unary_not':	( 'not %c', 0 ),
+    'unary_convert':	( '`%c`', 0 ),
+    'get_iter':	( 'iter(%c)', 0 ),
+    'slice0':		( '%c[:]', 0 ),
+    'slice1':		( '%c[%c:]', 0, 1 ),
+    'slice2':		( '%c[:%c]', 0, 1 ),
+    'slice3':		( '%c[%c:%c]', 0, 1, 2 ),
 
     'IMPORT_FROM':	( '%{pattr}', ),
-    'LOAD_ATTR':	( '.%{pattr}', ),
+    'load_attr':	( '%c.%[1]{pattr}', 0),
     'LOAD_FAST':	( '%{pattr}', ),
     'LOAD_NAME':	( '%{pattr}', ),
     'LOAD_GLOBAL':	( '%{pattr}', ),
     'LOAD_DEREF':	( '%{pattr}', ),
     'LOAD_LOCALS':	( 'locals()', ),
+    'LOAD_ASSERT':  ( '%{pattr}', ),
 #   'LOAD_CONST':	( '%{pattr}', ),	# handled by n_LOAD_CONST
     'DELETE_FAST':	( '%|del %{pattr}\n', ),
     'DELETE_NAME':	( '%|del %{pattr}\n', ),
     'DELETE_GLOBAL':	( '%|del %{pattr}\n', ),
     'delete_subscr':	( '%|del %c[%c]\n', 0, 1,),
     'binary_subscr':	( '%c[%c]', 0, 1),
+    'binary_subscr2':	( '%c[%c]', 0, 1),
     'store_subscr':	( '%c[%c]', 0, 1),
     'STORE_FAST':	( '%{pattr}', ),
     'STORE_NAME':	( '%{pattr}', ),
@@ -170,14 +178,14 @@ TABLE_DIRECT = {
     #'list_compr':	( '[ %c ]', -2),	# handled by n_list_compr
     'list_iter':	( '%c', 0),
     'list_for':		( ' for %c in %c%c', 2, 0, 3 ),
-    'list_if':		( ' if %c%c', 0, 3 ),
-    'list_if_not':		( ' if not(%c)%c', 0, 3 ),
+    'list_if':		( ' if %c%c', 0, 2 ),
+    'list_if_not':		( ' if not %p%c', (0,22), 2 ),
     'lc_body':		( '', ),	# ignore when recusing
 
     'comp_iter':	( '%c', 0),
     'comp_for':		( ' for %c in %c%c', 2, 0, 3 ),
     'comp_if':		( ' if %c%c', 0, 2 ),
-    'comp_ifnot':	( ' if not(%c)%c', 0, 2 ),
+    'comp_ifnot':	( ' if not %p%c', (0,22), 2 ),
     'comp_body':	( '', ),	# ignore when recusing
     'set_comp_body':    ( '%c', 0 ),
     'gen_comp_body':    ( '%c', 0 ),
@@ -185,18 +193,19 @@ TABLE_DIRECT = {
     
     'assign':		( '%|%c = %c\n', -1, 0 ),
     'augassign1':	( '%|%c %c %c\n', 0, 2, 1),
-    'augassign2':	( '%|%c%c %c %c\n', 0, 2, -3, -4),
+    'augassign2':	( '%|%c.%[2]{pattr} %c %c\n', 0, -3, -4),
 #   'dup_topx':		( '%c', 0),
     'designList':	( '%c = %c', 0, -1 ),
-    'and':          	( '(%c and %c)', 0, 2 ),
+    'and':          	( '%c and %c', 0, 2 ),
     'and2':          	( '%c', 3 ),
-    'or':           	( '(%c or %c)', 0, 2 ),
-    'conditional':  ( '(%c if %c else %c)', 2, 0, 4),
-    'conditionaland':  ( '(%c if %c and %c else %c)', 4, 0, 2, 6),
-    'conditionalnot':  ( '(%c if not %c else %c)', 2, 0, 4),
+    'or':           	( '%c or %c', 0, 2 ),
+    'conditional':  ( '%p if %p else %p', (2,100), (0,100), (4,100)),
+    'conditionaland':  ( '%p if %p and %p else %p', (4,100), (0,24), (2,24), (6,100)),
+    'conditionalnot':  ( '%p if not %p else %p', (2,100), (0,22), (4,100)),
     'conditional_lambda':  ( '(%c if %c else %c)', 2, 0, 3),
-    'conditional_lambda2':  ( '(%c if %c and %c else %c)', 4, 0, 2, 5),
-    'compare':		( '(%c %[-1]{pattr} %c)', 0, 1 ),
+    'conditional_lambda2':  ( '(%c if %p and %p else %c)', 4, (0,24), (2,24), 5),
+    'return_lambda':    ('%c', 0),
+    'compare':		( '%c %[-1]{pattr} %c', 0, 1 ),
     'cmp_list':		( '%c %c', 0, 1),
     'cmp_list1':	( '%[3]{pattr} %c %c', 0, -2),
     'cmp_list2':	( '%[1]{pattr} %c', 0),
@@ -216,11 +225,10 @@ TABLE_DIRECT = {
     'importfrom2':	( '%|from %[1]{pattr} import %c\n', 2 ),
     'importlist2':	( '%C', (0, sys.maxint, ', ') ),
     
-    'assert':		( '%|assert %c\n' , 2 ),
-    'assert2':		( '%|assert %c, %c\n' , 2, -4 ),
-    'assert3':		( '%|assert %c\n' , 0 ),
-    'assert4':		( '%|assert %c, %c\n' , 0, -3 ),
-
+    'assert':		( '%|assert %c\n' , 0 ),
+    'assert2':		( '%|assert %c, %c\n' , 0, 3 ),
+    'assert_expr_or': ( '%c or %c', 0, 2 ),
+    'assert_expr_and':    ( '%c and %c', 0, 2 ),
     'print_stmt':	( '%|print %c,\n', 0 ),
     'print_stmt_nl':	( '%|print %[0]C\n', (0,1, None) ),
     'print_nl_stmt':	( '%|print\n', ),
@@ -232,54 +240,50 @@ TABLE_DIRECT = {
     'call_stmt':	( '%|%c\n', 0),
     'break_stmt':	( '%|break\n', ),
     'continue_stmt':	( '%|continue\n', ),
+    'jcontinue_stmt':	( '%|continue\n', ),
     'raise_stmt':	( '%|raise %[0]C\n', (0,sys.maxint,', ') ),
     'yield_stmt':	( '%|yield %c\n', 0),
 #    'return_stmt':	( '%|return %c\n', 0),
-    'return_lambda':	( '%c', 0),
 
     'ifstmt':		( '%|if %c:\n%+%c%-', 0, 1 ),
     'iflaststmt':		( '%|if %c:\n%+%c%-', 0, 1 ),
-    'testtrue':     ( 'not %c', 0 ),
-    'ifstmt_oneline':		( '%|if %c:\n%+%c%-', 0, 1 ),
-    'ifstmt_oneline2':		( '%|if %c and %c:\n%+%c%-', 0, 2, 4 ),
-    'ifstmt_oneline2or':		( '%|if %c or %c:\n%+%c%-', 0, 2, 4 ),
-    'ifstmt_oneline3':		( '%|if %c and %c and %c:\n%+%c%-', 0, 2, 4, 6),
-    'ifchain':      ( '%|if (%c and\n%c', 0, 3),
-    'ifchain1':     ( '%|    %c and\n', 0),
-    'ifchain2':     ( '%|    %c):\n%+%c%-', 0, 3),     
-    'ifchain2else': ( '%|    %c):\n%+%c%-%|else:\n%+%c%-', 0, 3, 5),
-    'ifchain2a':    ( '%|if %c:\n%+%c%|if %c:\n%+%c%-%-', 0, 3, 4, 7),
-    'ifmerged':    ( '%|if %c:\n%+%|if %c:\n%+%c%-%-', 0, 1, 5),
-    'ifmergednot':    ( '%|if %c:\n%+%|if not %c:\n%+%c%-%-', 0, 1, 5),
-    'ifcontstmt':   ( '%|if %c:\n%+%|continue\n%-', 0 ),
-    'ifnotcontstmt':   ( '%|if not %c:\n%+%|continue\n%-', 0 ),
+    'iflaststmtl':		( '%|if %c:\n%+%c%-', 0, 1 ),
+    'testtrue':     ( 'not %p', (0,22) ),
     
     'ifelsestmt':	( '%|if %c:\n%+%c%-%|else:\n%+%c%-', 0, 1, 3 ),
+    'ifelsestmtl':	( '%|if %c:\n%+%c%-%|else:\n%+%c%-', 0, 1, 3 ),
     'ifelifstmt':	( '%|if %c:\n%+%c%-%c', 0, 1, 3 ),
     'elifelifstmt':	( '%|elif %c:\n%+%c%-%c', 0, 1, 3 ),
     'elifstmt':		( '%|elif %c:\n%+%c%-', 0, 1 ),
     'elifelsestmt':	( '%|elif %c:\n%+%c%-%|else:\n%+%c%-', 0, 1, 3 ),
     'ifelsestmtr':	( '%|if %c:\n%+%c%-%|else:\n%+%c%-', 0, 1, 2 ),
 
-    'ifforstmt':    ( '%|if %c:\n%+%|for %c in %c:\n%+%c%-%-\n', 0, 5, 3, 6 ),
-    'ifforelsestmt':( '%|if %c:\n%+%|for %c in %c:\n%+%c%-%-\n%|else:\n%+%c%-', 0, 5, 3, 6, -3 ),
-
     'whilestmt':	( '%|while %c:\n%+%c%-\n', 1, 2 ),
-    'whilestmt2':	( '%|while (%c and\n%|       %c):\n%+%c%-\n', 1, 2, 3 ),
     'while1stmt':	( '%|while 1:\n%+%c%-\n', 1 ),
-    'whileelsestmt':	( '%|while %c:\n%+%c%-%|else:\n%+%c%-\n', 1, 3, -2 ),
+    'whileelsestmt':	( '%|while %c:\n%+%c%-%|else:\n%+%c%-\n', 1, 2, -2 ),
+    'whileelselaststmt':	( '%|while %c:\n%+%c%-%|else:\n%+%c%-\n', 1, 2, -2 ),
     'while1elsestmt':	( '%|while 1:\n%+%c%-%|else:\n%+%c%-\n', 4, -2 ),
     'forstmt':		( '%|for %c in %c:\n%+%c%-\n', 3, 1, 4 ),
     'forelsestmt':	(
-        '%|for %c in %c:\n%+%c%-%|else:\n%+%c%-\n', 3, 1, 4, -2
-     ),
+        '%|for %c in %c:\n%+%c%-%|else:\n%+%c%-\n', 3, 1, 4, -2),
+    'forelselaststmt':	(
+        '%|for %c in %c:\n%+%c%-%|else:\n%+%c%-\n', 3, 1, 4, -2),
     'trystmt':		( '%|try:\n%+%c%-%c', 1, 5 ),
+    'c_trystmt':		( '%|try:\n%+%c%-%c', 1, 5 ),
     'except':		( '%|except:\n%+%c%-', 3 ),
     'except2':		( '%|except:\n%+%c%-', 3 ),
-    'except_cond1':	( '%|except %c:\n%+%c%-', 1, 7 ),
-    'except_cond1r':	( '%|except %c:\n%+%c%-', 1, 7 ),
-    'except_cond2':	( '%|except %c, %c:\n%+%c%-', 1, 5, 7 ),
+    'except_cond1':	( '%|except %c:\n', 1 ),
+    'except_cond2':	( '%|except %c as %c:\n', 1, 5 ),
+    'except_sub_stmts':     ( '%+%c%-%C', 0, (1, sys.maxint, '') ),
+    'except_sub_stmts_a':     ( '%+%c%-%C', 0, (1, sys.maxint, '') ),
+    'c_except_sub_stmts':   ( '%+%c%-%C', 0, (1, sys.maxint, '') ),
+    'c_except_sub_stmts2':  ( '%+%c%-%C', 0, (1, sys.maxint, '') ),
+    'c_except_sub_stmts_a':   ( '%+%c%-%C', 0, (1, sys.maxint, '') ),
+    'c_except_sub_stmts2_a':  ( '%+%c%-%C', 0, (1, sys.maxint, '') ),
+    'except_cond_cont': ( '%c%+%|continue\n%-', 0),
     'except_else':	( '%|else:\n%+%c%-', 2 ),
+    'except_else2':	( '%|else:\n%+%c%-', 1 ),
+    'except_else3':	( '%|else:\n%+%c%-', 2 ),
     'tryfinallystmt':	( '%|try:\n%+%c%-\n%|finally:\n%+%c%-\n', 1, 5 ),
     'withstmt':     ( '%|with %c:\n%+%c%-', 0, 3),
     'withasstmt':   ( '%|with %c as %c:\n%+%c%-', 0, 2, 3),
@@ -311,12 +315,66 @@ MAP_R = (TABLE_R, -1)
 
 MAP = {
     'stmt':		MAP_R,
+    'call_function':		MAP_R,
     'del_stmt':		MAP_R,
     'designator':	MAP_R,
-    'expr':		MAP_R,
     'exprlist':		MAP_R0,
 }
 
+PRECEDENCE = {
+    'build_list':           0,
+    'mapexpr':              0,
+    'unary_convert':        0,
+    'dictcomp':             0,
+    'setcomp':              0,
+    'list_compr':           0,
+    'genexpr':              0,
+    
+    'load_attr':            2,
+    'binary_subscr':        2,
+    'binary_subscr2':       2,
+    'slice0':               2,
+    'slice1':               2,
+    'slice2':               2,
+    'slice3':               2,
+    'call_function':        2,
+    
+    'BINARY_POWER':         4,
+    
+    'unary_expr':           6,
+    
+    'BINARY_MULTIPLY':      8,
+    'BINARY_DIVIDE':        8,
+    'BINARY_TRUE_DIVIDE':   8,
+    'BINARY_FLOOR_DIVIDE':  8,
+    'BINARY_MODULO':        8,
+    
+    'BINARY_ADD':           10, 
+    'BINARY_SUBTRACT':      10,
+    
+    'BINARY_LSHIFT':        12,
+    'BINARY_RSHIFT':        12,
+    
+    'BINARY_AND':           14,
+    
+    'BINARY_XOR':           16,
+    
+    'BINARY_OR':            18,
+    
+    'cmp':                  20,
+    
+    'unary_not':            22,
+    
+    'and':                  24,
+    
+    'or':                   26,
+    
+    'conditional':          28,
+    'conditionaland':       28,
+    'conditionalnot':       28,
+    
+    '_mklambda':            30
+}
 
 ASSIGN_TUPLE_PARAM = lambda param_name: \
              AST('expr', [ Token('LOAD_FAST', pattr=param_name) ])
@@ -340,18 +398,33 @@ class ParserError(Parser.ParserError):
         return '\n'.join(lines)
 
 
-__globals_tokens__ =  ('STORE_GLOBAL', 'DELETE_GLOBAL') # 'LOAD_GLOBAL'
-
-def find_globals(node, globals):
+def find_globals(node, globs):
     """Find globals in this statement."""
     for n in node:
         if isinstance(n, AST):
-            #if n != 'stmt': # skip nested statements
-                globals = find_globals(n, globals)
-        elif n.type in __globals_tokens__:
-            globals[n.pattr] = None
-    return globals
+            globs = find_globals(n, globs)
+        elif n.type in ('STORE_GLOBAL', 'DELETE_GLOBAL'):
+            globs.add(n.pattr)
+    return globs
 
+def find_all_globals(node, globs):
+    """Find globals in this statement."""
+    for n in node:
+        if isinstance(n, AST):
+            globs = find_all_globals(n, globs)
+        elif n.type in ('STORE_GLOBAL', 'DELETE_GLOBAL', 'LOAD_GLOBAL'):
+            globs.add(n.pattr)
+    return globs
+
+def find_none(node):
+    for n in node:
+        if isinstance(n, AST):
+            if not (n == 'return_stmt'): 
+                if find_none(n):
+                    return True
+        elif n.type == 'LOAD_CONST' and n.pattr == None:
+            return True
+    return False
 
 class Walker(GenericASTTraversal, object):
     stacked_params = ('f', 'indent', 'isLambda', '_globals')
@@ -366,6 +439,10 @@ class Walker(GenericASTTraversal, object):
         self.showast = showast
         self.__params = params
         self.__param_stack = []
+        self.ERROR = None
+        self.prec = 100
+        self.return_none = False
+        self.mod_globs = set()
 
     f = property(lambda s: s.__params['f'],
                  lambda s, x: s.__params.__setitem__('f', x),
@@ -446,19 +523,44 @@ class Walker(GenericASTTraversal, object):
             self.prune()
         else:
             self.write(self.indent, 'return ')
-            if node != AST('return_stmt', [NONE, Token('RETURN_VALUE')]):
+            if self.return_none or node != AST('return_stmt', [NONE, Token('RETURN_VALUE')]):
                 self.preorder(node[0])
             self.print_()
             self.prune() # stop recursing
         
-    def n_forstmt(self, node):
-        try:
-            bodynode = node[4][0][-1][0]
-            if bodynode == 'continue_stmt':
-                del node[4][0][-1]
-        finally:
-            self.default(node)
+#    def n_l_stmts(self, node):
+#        if node[0] == '_stmts':
+#            if len(node[0]) >= 2 and node[0][1] == 'stmt':
+#                if node[0][-1][0] == 'continue_stmt':
+#                    del node[0][-1]
+#        self.default(node)
 
+    def n_expr(self, node):
+        p = self.prec
+        if node[0].type.startswith('binary_expr'):
+            n = node[0][-1][0]
+        else:
+            n = node[0]
+        self.prec = PRECEDENCE.get(n,-2)
+        if p < self.prec:
+            self.write('(')
+            self.preorder(node[0])
+            self.write(')')
+        else:
+            self.preorder(node[0])
+        self.prec = p
+        self.prune()
+        
+    def n_binary_expr(self, node):
+        self.preorder(node[0])
+        self.write(' ')
+        self.preorder(node[-1])
+        self.write(' ')
+        self.prec -= 1
+        self.preorder(node[1])
+        self.prec += 1
+        self.prune()
+        
     def n_LOAD_CONST(self, node):
         data = node.pattr; datatype = type(data)
         if datatype is IntType and data == minint:
@@ -505,9 +607,12 @@ class Walker(GenericASTTraversal, object):
         self.prune() # stop recursing
             
     def n_ifelsestmt(self, node, preprocess=0):
-        if len(node[3]) == 1:
+        if len(node[3]) == 1 and not node[3][0] == 'continue_stmt':
             ifnode = node[3][0][0][0]
-            if ifnode == 'ifelsestmt':
+            if node[3][0] == 'lastc_stmt' and node[3][0][0] == 'iflaststmt':
+                node.type = 'ifelifstmt'
+                node[3][0][0].type = 'elifstmt'
+            elif ifnode == 'ifelsestmt':
                 node.type = 'ifelifstmt'
                 self.n_ifelsestmt(ifnode, preprocess=1)
                 if ifnode == 'ifelifstmt':
@@ -519,7 +624,23 @@ class Walker(GenericASTTraversal, object):
                 ifnode.type = 'elifstmt'
         if not preprocess:
             self.default(node)
-
+            
+    def n_ifelsestmtl(self, node, preprocess=0):
+        if len(node[3]) == 1 and node[3][0] == 'lastl_stmt':
+            ifnode = node[3][0][0]
+            if ifnode == 'ifelsestmtl':
+                node.type = 'ifelifstmt'
+                self.n_ifelsestmtl(ifnode, preprocess=1)
+                if ifnode == 'ifelifstmt':
+                    ifnode.type = 'elifelifstmt'
+                elif ifnode == 'ifelsestmtl':
+                    ifnode.type = 'elifelsestmt'
+            elif ifnode == 'iflaststmtl':
+                node.type = 'ifelifstmt'
+                ifnode.type = 'elifstmt'
+        if not preprocess:
+            self.default(node)
+        
     def n_import_as(self, node):
         iname = node[0].pattr;
         assert node[-1][-1].type.startswith('STORE_')
@@ -542,22 +663,27 @@ class Walker(GenericASTTraversal, object):
         self.prune() # stop recursing
 
     def n_list_compr(self, node):
+        p = self.prec
+        self.prec = 100
         n = node[-1]
         assert n == 'list_iter'
         # find innerst node
         while n == 'list_iter':
             n = n[0] # recurse one step
             if   n == 'list_for':	n = n[3]
-            elif n == 'list_if':	n = n[3]
-            elif n == 'list_if_not': n= n[3]
+            elif n == 'list_if':	n = n[2]
+            elif n == 'list_if_not': n= n[2]
         assert n == 'lc_body'
         self.write( '[ '); 
         self.preorder(n[0]) # lc_body
         self.preorder(node[-1]) # for/if parts
         self.write( ' ]')
         self.prune() # stop recursing
+        self.prec = p
 
     def comprehension_walk(self, node, iter_index):
+        p = self.prec
+        self.prec = 100
         code = node[-5].attr
 
         assert type(code) == CodeType
@@ -583,6 +709,7 @@ class Walker(GenericASTTraversal, object):
         self.write(' in ')
         self.preorder(node[-3])
         self.preorder(ast[iter_index])
+        self.prec = p
 
     def n_genexpr(self, node):
         self.write('(')
@@ -597,12 +724,7 @@ class Walker(GenericASTTraversal, object):
         self.write('}')
         self.prune()
 
-
-    def n_dictcomp(self, node):
-        self.write('{')
-        self.comprehension_walk(node, 4)
-        self.write('}')
-        self.prune()
+    n_dictcomp = n_setcomp
        
 
     def n_classdef(self, node):
@@ -610,8 +732,7 @@ class Walker(GenericASTTraversal, object):
         assert node[0].pattr == node[-1][-1].pattr
         self.print_()
         self.write(self.indent, 'class ', str(node[-1][-1].pattr))
-        if node[1] != BUILD_TUPLE_0: # this is a subclass
-            self.preorder(node[1]) # output superclasses
+        self.print_super_classes(node)
         self.print_(':')
 
         # class body
@@ -624,8 +745,7 @@ class Walker(GenericASTTraversal, object):
         # class definition ('class X(A,B,C):')
         self.print_()
         self.write(self.indent, 'class ', str(node[0].pattr))
-        if node[1] != BUILD_TUPLE_0: # this is a subclass
-            self.preorder(node[1]) # output superclasses
+        self.print_super_classes(node)
         self.print_(':')
 
         # class body
@@ -634,11 +754,28 @@ class Walker(GenericASTTraversal, object):
         self.indentLess()
         self.prune()
 
+    def print_super_classes(self, node):
+        node = node[1][0]
+        if not (node == 'build_list'):
+            return
+            
+        self.write('(')        
+        line_separator = ', '
+        sep = ''
+        for elem in node[:-1]:
+            value = self.traverse(elem)
+            self.write(sep, value)
+            sep = line_separator
+
+        self.write(')')
+
     def n_mapexpr(self, node):
         """
         prettyprint a mapexpr
         'mapexpr' is something like k = {'a': 1, 'b': 42 }"
         """
+        p = self.prec
+        self.prec = 100
         assert node[-1] == 'kvlist'
         node = node[-1] # goto kvlist
 
@@ -664,6 +801,7 @@ class Walker(GenericASTTraversal, object):
             sep = line_seperator
         self.write('}')
         self.indentLess(INDENT_PER_LEVEL)
+        self.prec = p
         self.prune()
         
 
@@ -671,6 +809,8 @@ class Walker(GenericASTTraversal, object):
         """
         prettyprint a list or tuple
         """
+        p = self.prec
+        self.prec = 100
         lastnode = node.pop().type
         if lastnode.startswith('BUILD_LIST'):
             self.write('['); endchar = ']'
@@ -684,7 +824,7 @@ class Walker(GenericASTTraversal, object):
             raise 'Internal Error: n_build_list expects list or tuple'
         
         self.indentMore(INDENT_PER_LEVEL)
-        if len(node) > 2:
+        if len(node) > 3:
             line_separator = ',\n' + self.indent
         else:
             line_separator = ', '
@@ -697,8 +837,11 @@ class Walker(GenericASTTraversal, object):
             value = self.traverse(elem)
             self.write(sep, value)
             sep = line_separator
+        if len(node) == 1 and lastnode.startswith('BUILD_TUPLE'):
+            self.write(',')
         self.write(endchar)
         self.indentLess(INDENT_PER_LEVEL)
+        self.prec = p
         self.prune()
 
 
@@ -737,6 +880,12 @@ class Walker(GenericASTTraversal, object):
             elif typ == 'c':
                 self.preorder(node[entry[arg]])
                 arg += 1
+            elif typ == 'p':
+                p = self.prec
+                (index, self.prec) = entry[arg]
+                self.preorder(node[index])
+                self.prec = p
+                arg += 1
             elif typ == 'C':
                 low, high, sep = entry[arg]
                 ## lastC = remaining = len(node[low:high])
@@ -746,6 +895,18 @@ class Walker(GenericASTTraversal, object):
                     remaining -= 1
                     if remaining > 0:
                         self.write(sep)
+                arg += 1
+            elif typ == 'P':
+                p = self.prec
+                low, high, sep, self.prec = entry[arg]
+                ## lastC = remaining = len(node[low:high])
+                remaining = len(node[low:high])
+                for subnode in node[low:high]:
+                    self.preorder(subnode)
+                    remaining -= 1
+                    if remaining > 0:
+                        self.write(sep)
+                self.prec = p
                 arg += 1
             elif typ == '{':
                 d = node.__dict__
@@ -779,7 +940,7 @@ class Walker(GenericASTTraversal, object):
           if TABLE_R.has_key(k):
              continue
           op = k[ :k.rfind('_') ]
-          if op == 'CALL_FUNCTION':	TABLE_R[k] = ('%c(%C)', 0, (1,-1,', '))
+          if op == 'CALL_FUNCTION':	TABLE_R[k] = ('%c(%P)', 0, (1,-1,', ',100))
           elif op in ('CALL_FUNCTION_VAR',
                       'CALL_FUNCTION_VAR_KW', 'CALL_FUNCTION_KW'):
              if v == 0:
@@ -821,8 +982,8 @@ class Walker(GenericASTTraversal, object):
        assert ast == 'stmts'
        for i in range(len(ast)):
            # search for an assign-statement
-           assert ast[i] == 'stmt'
-           node = ast[i][0]
+           assert ast[i][0] == 'stmt'
+           node = ast[i][0][0]
            if node == 'assign' \
               and node[0] == ASSIGN_TUPLE_PARAM(name):
                # okay, this assigns '.n' to something
@@ -842,16 +1003,16 @@ class Walker(GenericASTTraversal, object):
     def make_function(self, node, isLambda, nested=1):
         """Dump function defintion, doc string, and function body."""
 
-        def build_param(name, default):#(ast, name, default):
+        def build_param(ast, name, default):
             """build parameters:
                 - handle defaults
                 - handle format tuple parameters
             """
             # if formal parameter is a tuple, the paramater name
             # starts with a dot (eg. '.1', '.2')
-            #if name.startswith('.'):
+            if name.startswith('.'):
                 # replace the name with the tuple-string
-                #name = self.get_tuple_parameter(ast, name)
+                name = self.get_tuple_parameter(ast, name)
 
             if default:
                 if self.showast:
@@ -878,6 +1039,13 @@ class Walker(GenericASTTraversal, object):
         # defaults are for last n parameters, thus reverse
         paramnames.reverse(); defparams.reverse()
 
+        try:
+            ast = self.build_ast(code._tokens, code._customize, isLambda = isLambda, noneInNames = ('None' in code.co_names))
+        except ParserError as p:
+            self.write( str(p))
+            self.ERROR = p
+            return
+            
         # build parameters
        
         ##This would be a nicer piece of code, but I can't get this to work
@@ -886,8 +1054,7 @@ class Walker(GenericASTTraversal, object):
         ##	     paramnames, defparams)
         params = []
         for name, default in map(lambda a,b: (a,b), paramnames, defparams):
-#            params.append( build_param(ast, name, default) )
-            params.append( build_param(name, default) )
+            params.append( build_param(ast, name, default) )
 
         params.reverse() # back to correct order
 
@@ -910,12 +1077,6 @@ class Walker(GenericASTTraversal, object):
             # docstring exists, dump it
             self.print_docstring(indent, code.co_consts[0])
 
-        try:
-            ast = self.build_ast(code._tokens, code._customize, isLambda = isLambda)
-        except ParserError as p:
-            self.write( str(p))
-            #return
-            raise
         
         code._tokens = None # save memory
         assert ast == 'stmts'
@@ -931,14 +1092,15 @@ class Walker(GenericASTTraversal, object):
                 # Python adds a 'return None' to the
                 # end of any function; remove it
          #       ast.pop() # remove last node
-
-
-        for g in find_globals(ast, {}).keys():
-           self.print_(indent, 'global ', g)
-        self.gen_source(ast, code._customize, isLambda=isLambda)
+        
+        all_globals = find_all_globals(ast, set())
+        for g in ((all_globals & self.mod_globs) | find_globals(ast, set())):
+           self.print_(self.indent, 'global ', g)
+        self.mod_globs -= all_globals
+        rn = ('None' in code.co_names) and not find_none(ast)
+        self.gen_source(ast, code._customize, isLambda=isLambda, returnNone=rn)
         code._tokens = None; code._customize = None # save memory
-
-
+        
     def build_class(self, code):
         """Dump class definition, doc string and class body."""
 
@@ -952,32 +1114,34 @@ class Walker(GenericASTTraversal, object):
         code._tokens = None # save memory
         assert ast == 'stmts'
 
+        if ast[0][0] == NAME_MODULE:
+            del ast[0]
+
         # if docstring exists, dump it
-        if code.co_consts and code.co_consts[0] != None \
-           and ast[0] == ASSIGN_DOC_STRING(code.co_consts[0]):
-            #print '\n\n>>-->>doc string set\n\n'
+        if code.co_consts and code.co_consts[0] != None and ast[0][0] == ASSIGN_DOC_STRING(code.co_consts[0]):
             self.print_docstring(indent, code.co_consts[0])
             del ast[0]
         
-        if ast[0][0] == NAME_MODULE:
-            del ast[0][0]
 
         # the function defining a class normally returns locals(); we
         # don't want this to show up in the source, thus remove the node
-        if ast[-1][-1] == RETURN_LOCALS:
-            ast[-1].pop() # remove last node
+        if ast[-1][0] == RETURN_LOCALS:
+            del ast[-1] # remove last node
         #else:
         #    print ast[-1][-1]
 
         for g in find_globals(ast, {}).keys():
            self.print_(indent, 'global ', g)
+           
         self.gen_source(ast, code._customize)
         code._tokens = None; code._customize = None # save memory
 
 
-    def gen_source(self, ast, customize, isLambda=0):
+    def gen_source(self, ast, customize, isLambda=0, returnNone=False):
         """convert AST to source code"""
 
+        rn = self.return_none
+        self.return_none = returnNone
         # if code would be empty, append 'pass'
         if len(ast) == 0:
             self.print_(self.indent, 'pass')
@@ -987,31 +1151,37 @@ class Walker(GenericASTTraversal, object):
                 self.write(self.traverse(ast, isLambda=isLambda))
             else:
                 self.print_(self.traverse(ast, isLambda=isLambda))            
+        self.return_none = rn
 
-
-    def build_ast(self, tokens, customize, isLambda=0):
+    def build_ast(self, tokens, customize, isLambda=0, noneInNames=False):
         assert type(tokens) == ListType
         assert isinstance(tokens[0], Token)
         
         if isLambda:
-            Parser.p.addRule('stmt ::= conditional_lambda', Parser.nop)
-            Parser.p.addRule('stmt ::= conditional_lambda2', Parser.nop)
+            tokens.append(Token('LAMBDA_MARKER'))
             try:
                 ast = Parser.parse(tokens, customize)
             except Parser.ParserError, e:
                 raise ParserError(e, tokens)
-            Parser.p.cleanup()
-            Parser.p = Parser.Parser()
             if self.showast:
                 self.print_(repr(ast))
             return ast        
             
-        while(len(tokens) > 2):
-            if (tokens[-1] == Token('RETURN_VALUE')) and (tokens[-2] == Token('LOAD_CONST') and (tokens[-3].type != 'END_IF_LINE')):
-                del tokens[-2:]
-            else:
-                break
+#        while(len(tokens) > 2):
+#            if (tokens[-1] == Token('RETURN_VALUE')) and (tokens[-2] == Token('LOAD_CONST') and (tokens[-3].type != 'END_IF_LINE')):
+#                del tokens[-2:]
+#            else:
+#                break
 
+        if len(tokens) > 2 or len(tokens) == 2 and not noneInNames:
+            if tokens[-1] == Token('RETURN_VALUE'):
+                if tokens[-2] == Token('LOAD_CONST'):
+                    del tokens[-2:]
+                else:
+                    tokens.append(Token('RETURN_LAST'))
+        if len(tokens) == 0:
+            return PASS
+            
         # Build AST from disassembly.
         try:
             ast = Parser.parse(tokens, customize)
@@ -1023,10 +1193,18 @@ class Walker(GenericASTTraversal, object):
             except Parser.ParserError, e:  
                 try:    
                     del tokens[-2:]
-                    Parser.p.addRule('stmt ::= return_stmt', Parser.nop)
+                    Parser.p.addRule('stmt ::= continue_stmt', Parser.nop)
                     ast = Parser.parse(tokens, customize)
-                except:
-                    raise ParserError(e, tokens)
+                except Parser.ParserError, e:  
+                    try:    
+                        Parser.p.addRule('c_stmts ::= return_stmt', Parser.nop)
+                        ast = Parser.parse(tokens, customize)
+                    except:
+                        try:    
+                            Parser.p.addRule('stmt ::= return_stmt', Parser.nop)
+                            ast = Parser.parse(tokens, customize)
+                        except:
+                            raise ParserError(e, tokens)
                 finally:
                     Parser.p.cleanup()
                     Parser.p = Parser.Parser()
@@ -1034,4 +1212,5 @@ class Walker(GenericASTTraversal, object):
 
         if self.showast:
             self.print_(repr(ast))
+        
         return ast

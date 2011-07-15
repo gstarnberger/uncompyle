@@ -32,8 +32,6 @@ import Scanner, Walker, verify, magics
 sys.setrecursionlimit(5000)
 __all__ = ['uncompyle_file', 'uncompyle_file', 'main']
 
-TABWIDTH=4
-
 def _load_file(filename):
     """
     load a Python source file and compile it to byte-code
@@ -105,14 +103,19 @@ def uncompyle(version, co, out=None, showasm=0, showast=0):
 
     # convert leading '__doc__ = "..." into doc string
     assert ast == 'stmts'
-    if ast[0] == Walker.ASSIGN_DOC_STRING(co.co_consts[0]):
-        walker.print_docstring('', co.co_consts[0])
-        del ast[0]
-    if ast[-1] == Walker.RETURN_NONE:
-        ast.pop() # remove last node
-        #todo: if empty, add 'pass'
-
+    try:
+        if ast[0][0] == Walker.ASSIGN_DOC_STRING(co.co_consts[0]):
+            walker.print_docstring('', co.co_consts[0])
+            del ast[0]
+        if ast[-1] == Walker.RETURN_NONE:
+            ast.pop() # remove last node
+            #todo: if empty, add 'pass'
+    except:
+        pass
+    walker.mod_globs = Walker.find_globals(ast, set())
     walker.gen_source(ast, customize)
+    if walker.ERROR:
+        raise walker.ERROR
 
 def uncompyle_file(filename, outstream=None, showasm=0, showast=0):
     """
@@ -164,12 +167,13 @@ def main(in_base, out_base, files, codes, outfile=None,
 
     for code in codes:
         version = sys.version[:3] # "2.5"
-        co = compile(code, "", "exec")
+        with open(code, "r") as f:
+            co = compile(f.read(), "", "exec")
         uncompyle(sys.version[:3], co, sys.stdout, showasm=showasm, showast=showast)
 
     for file in files:
         infile = os.path.join(in_base, file)
-	#print >>sys.stderr, infile
+        #print >>sys.stderr, infile
 
         if of: # outfile was given as parameter
             outstream = _get_outstream(outfile)
@@ -178,7 +182,7 @@ def main(in_base, out_base, files, codes, outfile=None,
         else:
             outfile = os.path.join(out_base, file) + '_dis'
             outstream = _get_outstream(outfile)
-	#print >>sys.stderr, outfile 
+        #print >>sys.stderr, outfile 
 
         # try to decomyple the input file
         try:
@@ -190,11 +194,13 @@ def main(in_base, out_base, files, codes, outfile=None,
                 os.remove(outfile)
             raise
         except:
-	    failed_files += 1
+            failed_files += 1
             sys.stderr.write("### Can't uncompyle  %s\n" % infile)
             if outfile:
                 outstream.close()
                 os.rename(outfile, outfile + '_failed')
+                import traceback
+                traceback.print_exc()
             #raise
 	else: # uncompyle successfull
             if outfile:
@@ -205,7 +211,7 @@ def main(in_base, out_base, files, codes, outfile=None,
                     print "+++ okay decompyling", infile, __memUsage()
                     okay_files += 1
                 except verify.VerifyCmpError, e:
-		    verify_failed_files += 1
+                    verify_failed_files += 1
                     os.rename(outfile, outfile + '_unverified')
                     print >>sys.stderr, "### Error Verifiying", file
                     print >>sys.stderr, e
