@@ -24,6 +24,16 @@ class CmpErrorConsts(VerifyCmpError):
 		return 'Compare Error within Consts of %s at index %i' % \
 		       (repr(self.name), self.index)
 					
+class CmpErrorConstsType(VerifyCmpError):
+	"""Exception to be raised when consts differ."""
+	def __init__(self, name, index):
+		self.name = name
+		self.index = index
+
+	def __str__(self):
+		return 'Consts type differ in %s at index %i' % \
+		       (repr(self.name), self.index)
+
 class CmpErrorConstsLen(VerifyCmpError):
 	"""Exception to be raised when length of co_consts differs."""
 	def __init__(self, name, consts1, consts2):
@@ -38,17 +48,22 @@ class CmpErrorConstsLen(VerifyCmpError):
 					
 class CmpErrorCode(VerifyCmpError):
 	"""Exception to be raised when code differs."""
-	def __init__(self, name, index, token1, token2):
+	def __init__(self, name, index, token1, token2, tokens1, tokens2):
 		self.name = name
 		self.index = index
 		self.token1 = token1
 		self.token2 = token2
+		self.tokens = [tokens1, tokens2]
 		
 	def __str__(self):
-		return 'Code differs in %s at offset %i [%s] != [%s]' % \
+		s =  reduce(lambda s,t: "%s%-37s\t%-37s\n" % (s, t[0], t[1]),
+			      map(lambda a,b: (a,b),
+				  self.tokens[0],
+				  self.tokens[1]),
+			      'Code differs in %s\n' % str(self.name))
+		return ('Code differs in %s at offset %i [%s] != [%s]\n\n' % \
 		       (repr(self.name), self.index,
-			repr(self.token1), repr(self.token2)) #\
-			# + ('%s %s') % (self.token1.pattr, self.token2.pattr)
+			repr(self.token1), repr(self.token2))) + s
 
 class CmpErrorCodeLen(VerifyCmpError):
 	"""Exception to be raised when code length differs."""
@@ -78,7 +93,7 @@ class CmpErrorMember(VerifyCmpError):
 #--- compare ---
 					
 # these members are ignored
-__IGNORE_CODE_MEMBERS__ = ['co_filename', 'co_firstlineno', 'co_lnotab']
+__IGNORE_CODE_MEMBERS__ = ['co_filename', 'co_firstlineno', 'co_lnotab', 'co_consts']
 
 def cmp_code_objects(version, code_obj1, code_obj2, name=''):
 	"""
@@ -153,7 +168,7 @@ def cmp_code_objects(version, code_obj1, code_obj2, name=''):
 				if tokens1[i] != tokens2[i]:
 					#print '-->', i, type(tokens1[i]), type(tokens2[i])
 					raise CmpErrorCode(name, i, tokens1[i],
-							   tokens2[i])
+							   tokens2[i], tokens1, tokens2)
 			del tokens1, tokens2 # save memory
 		elif member == 'co_consts':
 			# compare length
@@ -167,7 +182,7 @@ def cmp_code_objects(version, code_obj1, code_obj2, name=''):
 				## print code_obj2.co_consts[idx]
 				# same type?
 				if type(const1) != type(const2):
-					raise CmpErrorContType(name, idx)
+					raise CmpErrorConstsType(name, idx)
 				if type(const1) == types.CodeType:
 					# code object -> recursive compare
 					cmp_code_objects(version, const1,

@@ -1,4 +1,4 @@
-#!python2.7
+#!/usr/bin/env python2.7
 # Mode: -*- python -*-
 #
 # Copyright (c) 2000-2002 by hartmut Goebel <hartmut@goebel.noris.de>
@@ -22,7 +22,7 @@ Options:
                     -> /tmp/bla/fasel.dis, /tmp/bar/foo.dis
                   uncompyle -o /tmp /usr/lib/python1.5
                     -> /tmp/smtplib.dis ... /tmp/lib-tk/FixTk.dis
-  -c <code>     attempts a disassembly after compiling <code
+  -c <file>     attempts a disassembly after compiling <file>
   -d            do not print timestamps
   --verify      compare generated source with input byte-code
                 (requires -o)

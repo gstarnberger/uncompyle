@@ -155,9 +155,9 @@ class Scanner:
                                     offset="%s_%d" % (offset, k) ))
                     k += 1
                     
-            if self.__end_if_line.has_key(offset):
-                rv.append(Token('END_IF_LINE', None, repr(self.__end_if_line[offset]), 
-                            offset="%s_" % offset ))
+#            if self.__end_if_line.has_key(offset):
+#                rv.append(Token('END_IF_LINE', None, repr(self.__end_if_line[offset]), 
+#                            offset="%s_" % offset ))
             c = code[i]
             op = ord(c)
             opname = dis.opname[op]
@@ -222,45 +222,31 @@ class Scanner:
                 else:
                     opname = '%s_%d' % (opname, oparg)
                     customize[opname] = oparg
-#            elif (opname in ('POP_JUMP_IF_FALSE', 'POP_JUMP_IF_TRUE')) and (offset != lastif):
+#            elif opname == 'POP_JUMP_IF_TRUE':
 #                target = self.__get_target(code, offset)
-#                if target == n-4:
-#                    if opname == 'POP_JUMP_IF_FALSE':
-#                        opname = 'POP_JUMP_IF_TRUE'
-#                    else:
-#                        opname = 'POP_JUMP_IF_FALSE'
-#                    rv.append(Token(opname, oparg, pattr, '%sa0' % offset))
-#                    oparg = ord(code[n-3]) + ord(code[n-2])
-#                    const = co.co_consts[oparg]
-#                    rv.append(Token('LOAD_CONST', oparg, const, '%sa1' % offset))
-#                    rv.append(Token('RETURN_VALUE', None, None, '%sa2' % offset))
-#                    rv.append(Token('COME_FROM', None, None, '%sa3' % offset))
-#                    continue
-#            elif opname == 'JUMP_ABSOLUTE':                
-#                if oparg == n-4:
-#                    oparg = ord(code[n-3]) + ord(code[n-2])
-#                    const = co.co_consts[oparg]
-#                    rv.append(Token('LOAD_CONST', oparg, const, '%sc0' % offset))
-#                    rv.append(Token('RETURN_VALUE', None, None, '%sc1' % offset))
-#                    continue
-            elif opname == 'POP_JUMP_IF_TRUE':
-                target = self.__get_target(code, offset)
-                if (dis.opname[ord(code[target])] == 'FOR_ITER') and (self.lines[offset] != self.lines[offset+3]):
-                    opname = 'CONTINUE_IF_TRUE'
- #           elif opname == 'POP_JUMP_IF_FALSE':
- #               target = self.__get_target(code, offset)
- #               if (dis.opname[ord(code[target])] == 'FOR_ITER') and (self.lines[offset] != self.lines[offset+3]):
- #                   opname = 'CONTINUE_IF_FALSE'
+#                if (dis.opname[ord(code[target])] == 'FOR_ITER') and (self.lines[offset] != self.lines[offset+3]):
+#                    opname = 'CONTINUE_IF_TRUE'
             elif opname == 'JUMP_ABSOLUTE':
                 target = self.__get_target(code, offset)
                 if target < offset:
                     opname = 'JUMP_BACK'
-                #elif (dis.opname[ord(code[target])]=='JUMP_ABSOLUTE') and (self.__get_target(code, target) < offset):
-                 #   opname = 'JUMP_BACK' 
-                    
-                
+
+            elif opname == 'LOAD_GLOBAL':
+                try:
+                    if pattr == 'AssertionError' and rv and rv[-1] == 'POP_JUMP_IF_TRUE':
+                        opname = 'LOAD_ASSERT'
+                except AttributeError:
+                    pass
+
+            elif opname == 'IMPORT_NAME':
+                if pattr == '':
+                    pattr = '.'
 
             rv.append(Token(opname, oparg, pattr, offset))
+
+            if self.__jump_back_else.get(offset, False):
+                rv.append(Token('JUMP_BACK_ELSE', None, None, 
+                    offset="%s_" % offset ))
             
         if self.showasm:
             out = self.out # shortcut
@@ -331,7 +317,8 @@ class Scanner:
         Return index to it or None if not found.
         """
 
-        assert(start>=0 and end<len(code))
+        if not (start>=0 and end<len(code)):
+            return None
 
         HAVE_ARGUMENT = self.dis.HAVE_ARGUMENT
 
@@ -524,10 +511,12 @@ class Scanner:
         JUMP_IF_TRUE_OR_POP = self.dis.opmap['JUMP_IF_TRUE_OR_POP']
         END_FINALLY   = self.dis.opmap['END_FINALLY']
         POP_TOP       = self.dis.opmap['POP_TOP']
+        POP_BLOCK       = self.dis.opmap['POP_BLOCK']
         RETURN_VALUE = self.dis.opmap['RETURN_VALUE']
         CONTINUE_LOOP = self.dis.opmap['CONTINUE_LOOP']
         LOAD_ATTR = self.dis.opmap['LOAD_ATTR']
-
+        LOAD_FAST = self.dis.opmap['LOAD_FAST']
+        RAISE_VARARGS = self.dis.opmap['RAISE_VARARGS']
         # Ev remove this test and make op a mandatory argument -Dan
         if op is None:
             op = ord(code[pos])
@@ -558,15 +547,27 @@ class Scanner:
             end    = self.__restrict_to_parent(target, parent)
             if target != end:
                 self.__fixed_jumps[pos] = end
-
+            
+            (line_no, next_line_byte) = self.lines[pos]
             jump_back = self.__last_instr(code, start, end, JUMP_ABSOLUTE,
-                                          start, False)
+                                          next_line_byte, False)
             if not jump_back:
                 return
+
+            if self.__get_target(code, jump_back) >= next_line_byte:
+                jump_back = self.__last_instr(code, start, end, JUMP_ABSOLUTE,
+                                          start, False)
+
                 
-            if end > (jump_back+4) and (ord(code[jump_back+4]) in (JUMP_ABSOLUTE, JUMP_FORWARD)):
+            if end > jump_back+4 and ord(code[end]) in (JUMP_FORWARD, JUMP_ABSOLUTE):
+                if ord(code[jump_back+4]) in (JUMP_ABSOLUTE,):
+                    if self.__get_target(code, jump_back+4) == self.__get_target(code, end):
+                        self.__fixed_jumps[pos] = jump_back+4
+                        end = jump_back+4
+            elif target < pos:
                 self.__fixed_jumps[pos] = jump_back+4
                 end = jump_back+4
+             
             target = self.__get_target(code, jump_back, JUMP_ABSOLUTE)
 
             if ord(code[target]) in (FOR_ITER, GET_ITER):
@@ -650,13 +651,22 @@ class Scanner:
                 i = jmp+3
         elif op in (POP_JUMP_IF_FALSE, POP_JUMP_IF_TRUE):
 
-            if self.__ignore_if(code, pos):
-                return
+#            if self.__ignore_if(code, pos):
+#                return
             start = pos+3 
             target = self.__get_target(code, pos, op)
             rtarget = self.__restrict_to_parent(target, parent)
- 
+            
             (line_no, next_line_byte) = self.lines[pos]
+            
+            if target == rtarget:
+                prev_target = self.prev[target]
+                prev_target_op = ord(code[prev_target])
+                target_op = ord(code[target])
+                if prev_target_op == JUMP_ABSOLUTE and target_op != POP_BLOCK:
+                    if self.__get_target(code, prev_target) < pos:
+                        self.__jump_back_else[prev_target] = True
+
             #is this part of a larger expression
             if (ord(code[self.prev[target]]) in (JUMP_IF_FALSE_OR_POP, JUMP_IF_TRUE_OR_POP,
                     POP_JUMP_IF_FALSE, POP_JUMP_IF_TRUE)) and (target > pos):  
@@ -664,62 +674,147 @@ class Scanner:
                 if op == POP_JUMP_IF_TRUE:
                     self.pjit_tgt[self.prev[target]] = True
                 return
+                
             #is this not at the end of a line
             if line_no == self.lines[start][0]:
+                #is this a one line if with multiple tests
+                good_op = False
+                prev = self.prev[next_line_byte]
+                p_op = ord(code[prev])
+                if op == POP_JUMP_IF_FALSE:
+                    if target == next_line_byte:
+                        if p_op == JUMP_FORWARD:
+                            if self.__get_target(code, prev) == target:
+                                good_op = True
+                        if p_op == RETURN_VALUE:
+                            good_op = True
+                    else:
+                        if start < target < next_line_byte:
+                            if ord(code[self.prev[target]]) in (JUMP_ABSOLUTE, JUMP_FORWARD):
+                                good_op = True
+                        while p_op in (JUMP_ABSOLUTE, JUMP_FORWARD, POP_BLOCK):
+                            if p_op in (JUMP_ABSOLUTE, JUMP_FORWARD):
+                                if self.__get_target(code, prev) == target:
+                                    good_op = True
+                                    break
+                            prev = self.prev[prev]
+                            p_op = ord(code[prev])
+                    if good_op:
+                        last = self.__last_instr(code, start, next_line_byte,
+                                (POP_JUMP_IF_FALSE, POP_JUMP_IF_TRUE), target)
+                        if last:
+                            self.__fixed_jumps[pos] = last
+                            return
+                else:
+                    while p_op in (JUMP_ABSOLUTE, JUMP_FORWARD, POP_BLOCK):
+                        if p_op in (JUMP_ABSOLUTE, JUMP_FORWARD):
+                            if self.__get_target(code, prev) == target:
+                                last = self.__last_instr(code, start, next_line_byte,
+                                        (POP_JUMP_IF_FALSE, POP_JUMP_IF_TRUE))
+                                if last:
+                                    self.__fixed_jumps[pos] = last
+                                    return
+                                break
+                        prev = self.prev[prev]
+                        p_op = ord(code[prev])
+                 
+                #if ifline
                 if self.if_lines.get(line_no, False):
                     if (target >= next_line_byte) or (target < pos):
                         if not (line_no == self.lines[target][0]):
                             self.__fixed_jumps[pos] = self.prev[next_line_byte]
-                elif self.if_lines.get(line_no+1, False):
+                    return
+                if self.if_lines.get(line_no+1, False):
                     next_if = self.prev[self.lines[next_line_byte][1]]
                     if target == self.__get_target(code, next_if):
                         self.__fixed_jumps[pos] = next_if
+                    elif (op == POP_JUMP_IF_TRUE) and (ord(code[next_if+3]) == JUMP_ABSOLUTE) and (target == self.__get_target(code, next_if+3)) and (target < pos):
+                        self.__fixed_jumps[pos] = next_if
+                    return
                 else:
                     if self.lines[target][0] > line_no:
                         next = self.__first_instr(code, start, target, POP_JUMP_IF_FALSE, target)
-                        if next:
+                        j = self.__first_instr(code, start, target, JUMP_ABSOLUTE, target)
+                        if next and not j:
                             self.__fixed_jumps[pos] = next
-#                elif ord(code[self.prev[rtarget]]) == RETURN_VALUE:
-#                    self.__fixed_jumps[pos] = rtarget
+                    return
                 return
                     
             if op == POP_JUMP_IF_FALSE:
                 i = self.lines[next_line_byte][0]
                 k = j = next_line_byte
+                num_pj = 1
                 while ((self.if_lines.get(i, False)
-            #           and (not self.pjit_tgt.get(j-3, False))):
-                       and ((self.__get_target(code, self.lines[j][1]-3) == target)
-                            or ((ord(code[self.lines[j][1]-3]) == POP_JUMP_IF_TRUE)
-                                and (ord(code[self.__get_target(code, self.lines[j][1]-3)-3]) == POP_JUMP_IF_FALSE)
-                                and (self.__get_target(code, self.__get_target(code, self.lines[j][1]-3)-3) == target))))
-                        or (ord(code[self.lines[j][1]-3]) == LOAD_ATTR)):
-                       j = self.lines[j][1]
-                       i = self.lines[j][0]
-                       if not (ord(code[j-3]) == LOAD_ATTR):
-                          k = j
+                        and ((self.__get_target(code, self.lines[j][1]-3) == target)
+                             or ((ord(code[self.lines[j][1]-3]) == POP_JUMP_IF_TRUE)
+                                 and (ord(code[self.__get_target(code, self.lines[j][1]-3)-3]) == POP_JUMP_IF_FALSE)
+                                 and (self.__get_target(code, self.__get_target(code, self.lines[j][1]-3)-3) == target))))
+                       or (ord(code[self.prev[self.lines[j][1]]]) in (LOAD_ATTR, LOAD_FAST))):
+                    if (self.if_lines.get(i, False) and (self.__get_target(code, self.lines[j][1]-3) == target)):
+                        num_pj += 1
+                    j = self.lines[j][1]
+                    i = self.lines[j][0]
+                    if (ord(code[self.prev[j]]) not in (LOAD_ATTR, LOAD_FAST)):
+                        k = j
                 if k > next_line_byte:
-                    self.__fixed_jumps[pos] = k-3
-                    return
-            elif op == POP_JUMP_IF_TRUE and target > pos:
+                    if num_pj > 1 and target > pos:
+                        prev_end = self.prev[rtarget]
+                        num_pj += len({ self.lines[a][0] for a in self.__all_instr(code, k, prev_end, (POP_JUMP_IF_FALSE, POP_JUMP_IF_TRUE), target)})
+                        num_pr = len({ self.lines[a][0] for a in self.__all_instr(code, k, prev_end, (POP_JUMP_IF_FALSE, POP_JUMP_IF_TRUE), rtarget)})
+                        num_jumps = 0
+                        while ord(code[prev_end]) in (JUMP_FORWARD, JUMP_ABSOLUTE) and self.__get_target(code, prev_end) == target:
+                            num_pr += len({ self.lines[a][0] for a in self.__all_instr(code, k, prev_end, (POP_JUMP_IF_FALSE, POP_JUMP_IF_TRUE), prev_end)})
+                            num_jumps += 1
+                            prev_end = self.prev[prev_end]
+                        if ord(code[prev_end]) == RETURN_VALUE:
+                            num_jumps += 1
+                            num_pj += num_pr
+                        num_pj += len(self.__all_instr(code, k, prev_end, (POP_JUMP_IF_FALSE, POP_JUMP_IF_TRUE), target))
+                        if num_pj > num_jumps:
+                            self.__fixed_jumps[pos] = k-3
+                            return
+                    else:
+                        self.__fixed_jumps[pos] = k-3
+                        return
+                
+#            elif op == POP_JUMP_IF_TRUE and target > pos:
+#                i = self.lines[next_line_byte][0]
+#                j = next_line_byte
+#                while (self.if_lines.get(i, False)
+#                       and ((self.__get_target(code, self.lines[j][1]-3) == target)
+#                            and (ord(code[self.lines[j][1]-3]) == POP_JUMP_IF_TRUE))):
+#                       j = self.lines[j][1]
+#                       i = self.lines[j][0]
+#                if j > next_line_byte:
+#                    self.__fixed_jumps[pos] = j-3
+#                    return
+            elif op == POP_JUMP_IF_TRUE:
+                def equaljumps(jump1, jump2):
+                    jump_ops = (JUMP_ABSOLUTE, JUMP_FORWARD)
+                    while ord(code[jump1]) in jump_ops:
+                        jump1 = self.__get_target(code, jump1)
+                    while ord(code[jump2]) in jump_ops:
+                        jump2 = self.__get_target(code, jump2)
+                    return jump1 == jump2
                 i = self.lines[next_line_byte][0]
                 j = next_line_byte
-                while (self.if_lines.get(i, False)
-            #           and (not self.pjit_tgt.get(j-3, False))):
-                       and ((self.__get_target(code, self.lines[j][1]-3) == target)
-                            and (ord(code[self.lines[j][1]-3]) == POP_JUMP_IF_TRUE))):
+                while self.if_lines.get(i, False):
                        j = self.lines[j][1]
                        i = self.lines[j][0]
                 if j > next_line_byte:
-                    self.__fixed_jumps[pos] = j-3
-                    return
+                    if ord(code[j]) == JUMP_ABSOLUTE and equaljumps(j, target):
+                        self.__fixed_jumps[pos] = j-3
+                        return
                 
             if (target < pos) and ((ord(code[target]) == FOR_ITER) or (ord(code[self.prev[target]]) == SETUP_LOOP)):
-                self.__end_if_line[start] = 0
+#                self.__end_if_line[start] = 0
+                
                 if ord(code[self.prev[end]]) == JUMP_ABSOLUTE:
                     if self.__get_target(code, self.prev[end]) == target:
                         self.__structs.append({'type':  'if-then',
                                        'start': pos,
                                        'end':   self.prev[end]})
+#                        print self.__structs[-1]
                 return
 
             #does the if jump just beyond a jump op, then this is probably an if statement
@@ -733,7 +828,7 @@ class Scanner:
                         
                 end = self.__restrict_to_parent(if_end, parent)
                                                        
-                self.__end_if_line[start] = rtarget
+#                self.__end_if_line[start] = rtarget
 
                 self.__structs.append({'type':  'if-then',
                                        'start': start,
@@ -744,7 +839,7 @@ class Scanner:
                                        'start': rtarget,
                                        'end':   end})
             elif ord(code[self.prev[rtarget]]) == RETURN_VALUE:
-                self.__end_if_line[start] = rtarget
+#                self.__end_if_line[start] = rtarget
  #               self.__fixed_jumps[pos] = rtarget
                 self.__structs.append({'type':  'if-then',
                                        'start': start,
@@ -778,7 +873,8 @@ class Scanner:
         self.__while1 = {} ## 'while 1:' in python 2.3+ has another start point
         self.__fixed_jumps = {} ## Map fixed jumps to their real destination
         self.__ignored_ifs = [] ## JUMP_IF_XXXX's we should ignore
-        self.__end_if_line = {}
+#        self.__end_if_line = {}
+        self.__jump_back_else = {}
         self.pjit_tgt = {}
         POP_JUMP_IF_FALSE = self.dis.opmap['POP_JUMP_IF_FALSE']
         POP_JUMP_IF_TRUE  = self.dis.opmap['POP_JUMP_IF_TRUE']
