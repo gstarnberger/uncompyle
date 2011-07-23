@@ -122,7 +122,8 @@ if timestamp:
     print time.strftime(timestampfmt)
 if numproc <= 1:
     try:
-        main(src_base, out_base, files, codes, outfile, showasm, showast, do_verify)
+        result = main(src_base, out_base, files, codes, outfile, showasm, showast, do_verify)
+        print '# decompiled %i files: %i okay, %i failed, %i verify failed' % result
     except (KeyboardInterrupt, OSError):
         pass
     except verify.VerifyCmpError:
@@ -146,7 +147,7 @@ else:
                 if f == None:
                     break
                 (t, o, f, v) = \
-                    main(src_base, out_base, [f], codes, outfile, showasm, showast, do_verify, False)
+                    main(src_base, out_base, [f], codes, outfile, showasm, showast, do_verify)
                 tot_files += t
                 okay_files += o
                 failed_files += f
