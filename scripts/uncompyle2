@@ -24,6 +24,7 @@ Options:
                     -> /tmp/smtplib.dis ... /tmp/lib-tk/FixTk.dis
   -c <file>     attempts a disassembly after compiling <file>
   -d            do not print timestamps
+  -p <integer>  use <integer> number of processes
   --verify      compare generated source with input byte-code
                 (requires -o)
   --help        show this message
@@ -46,7 +47,7 @@ import os.path
 from uncompyle2 import main, verify
 import time
 
-showasm = showast = do_verify = 0
+showasm = showast = do_verify = numproc = 0
 outfile = '-'
 out_base = None
 codes = []
@@ -54,7 +55,7 @@ timestamp = True
 timestampfmt = "# %Y.%m.%d %H:%M:%S %Z"
 
 try:
-    opts, files = getopt.getopt(sys.argv[1:], 'hatdo:c:',
+    opts, files = getopt.getopt(sys.argv[1:], 'hatdo:c:p:',
                            ['help', 'verify', 'showast', 'showasm'])
 except getopt.GetoptError, e:
     print >>sys.stderr, '%s: %s' % (os.path.basename(sys.argv[0]), e)
@@ -78,7 +79,10 @@ for opt, val in opts:
         timestamp = False
     elif opt == '-c':
         codes.append(val)
+    elif opt == '-p':
+        numproc = int(val)
     else:
+        print opt
         print Usage_short
         sys.exit(1)
 
@@ -102,13 +106,63 @@ elif outfile and len(files) > 1:
 
 if timestamp:
     print time.strftime(timestampfmt)
+if numproc <= 1:
+    try:
+        main(src_base, out_base, files, codes, outfile, showasm, showast, do_verify)
+    except (KeyboardInterrupt, OSError):
+        pass
+    except verify.VerifyCmpError:
+        raise
+else:
+    from multiprocessing import Process, Queue
+    from Queue import Empty
+    fqueue = Queue(len(files)+numproc)
+    for f in files:
+        fqueue.put(f)
+    for i in range(numproc):
+        fqueue.put(None)
+        
+    rqueue = Queue(numproc)
+    
+    def process_func():
+        try:
+            (tot_files, okay_files, failed_files, verify_failed_files) = (0,0,0,0)
+            while 1:
+                f = fqueue.get()
+                if f == None:
+                    break
+                (t, o, f, v) = \
+                    main(src_base, out_base, [f], codes, outfile, showasm, showast, do_verify, False)
+                tot_files += t
+                okay_files += o
+                failed_files += f
+                verify_failed_files += v
+        except (Empty, KeyboardInterrupt, OSError):
+            pass
+        rqueue.put((tot_files, okay_files, failed_files, verify_failed_files))
+        rqueue.close()
 
-try:
-    main(src_base, out_base, files, codes, outfile, showasm, showast, do_verify)
-except KeyboardInterrupt, OSError:
-    pass
-except verify.VerifyCmpError:
-    raise
+    try:
+        procs = [Process(target=process_func) for i in range(numproc)]
+        for p in procs:
+            p.start()
+        for p in procs:
+            p.join()
+        try:
+            (tot_files, okay_files, failed_files, verify_failed_files) = (0,0,0,0)
+            while 1:
+                (t, o, f, v) = rqueue.get(False)
+                tot_files += t
+                okay_files += o
+                failed_files += f
+                verify_failed_files += v
+        except Empty:
+            pass
+        print '# decompiled %i files: %i okay, %i failed, %i verify failed' % \
+              (tot_files, okay_files, failed_files, verify_failed_files)
+    except (KeyboardInterrupt, OSError):
+        pass
+        
 
 if timestamp:
     print time.strftime(timestampfmt)
