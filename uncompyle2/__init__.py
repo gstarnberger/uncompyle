@@ -221,4 +221,4 @@ def main(in_base, out_base, files, codes, outfile=None,
     if showtotal:
         print '# decompiled %i files: %i okay, %i failed, %i verify failed' % \
               (tot_files, okay_files, failed_files, verify_failed_files)
-    return (tot_files, okay_files, failed_files, verify_failed_files)
+    return (tot_files, okay_files, failed_files, verify_failed_files) 
