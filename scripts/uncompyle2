@@ -25,6 +25,7 @@ Options:
   -c <file>     attempts a disassembly after compiling <file>
   -d            do not print timestamps
   -p <integer>  use <integer> number of processes
+  -r            recurse directories looking for .pyc and .pyo files
   --verify      compare generated source with input byte-code
                 (requires -o)
   --help        show this message
@@ -47,7 +48,7 @@ import os.path
 from uncompyle2 import main, verify
 import time
 
-showasm = showast = do_verify = numproc = 0
+showasm = showast = do_verify = numproc = recurse_dirs = 0
 outfile = '-'
 out_base = None
 codes = []
@@ -55,7 +56,7 @@ timestamp = True
 timestampfmt = "# %Y.%m.%d %H:%M:%S %Z"
 
 try:
-    opts, files = getopt.getopt(sys.argv[1:], 'hatdo:c:p:',
+    opts, files = getopt.getopt(sys.argv[1:], 'hatdro:c:p:',
                            ['help', 'verify', 'showast', 'showasm'])
 except getopt.GetoptError, e:
     print >>sys.stderr, '%s: %s' % (os.path.basename(sys.argv[0]), e)
@@ -81,10 +82,23 @@ for opt, val in opts:
         codes.append(val)
     elif opt == '-p':
         numproc = int(val)
+    elif opt == '-r':
+        recurse_dirs = 1
     else:
         print opt
         print Usage_short
         sys.exit(1)
+
+# expand directory if specified
+if recurse_dirs:
+    expanded_files = []
+    for f in files:
+        if os.path.isdir(f):
+            for root, _, dir_files in os.walk(f):
+                for df in dir_files:
+                    if df.endswith('.pyc') or df.endswith('.pyo'):
+                        expanded_files.append(os.path.join(root, df))
+    files = expanded_files
 
 # argl, commonprefix works on strings, not on path parts,
 # thus we must handle the case with files in 'some/classes'
