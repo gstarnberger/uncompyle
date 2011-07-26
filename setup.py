@@ -11,5 +11,5 @@ setup (name = "uncompyle2",
        author_email = "hartmut@oberon.noris.de",
        url = "http://github.com/sysfrog/uncompyle",
        packages=['uncompyle2', 'uncompyle2.dis', 'uncompyle2.opcode'],
-       scripts=['scripts/uncompyle2'],
+       scripts=['scripts/uncompyle.py'],
       )
