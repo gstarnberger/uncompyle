@@ -1,23 +1,23 @@
 
-                 uncompyle2 -- A Python byte-code decompiler
+                 uncompyle -- A Python byte-code decompiler
                           0.11
                           2011-1-9
 
 Introduction
 ------------
 
-'uncompyle2' converts Python byte-code back into equivalent Python
+'uncompyle' converts Python byte-code back into equivalent Python
 source. It accepts byte-code from Python version 2.7 only.
 
 The generated source is very readable: docstrings, lists, tuples and
 hashes get pretty-printed.
 
-'uncompyle2' may also verify the equivalence of the generated source by
+'uncompyle' may also verify the equivalence of the generated source by
 by compiling it and comparing both byte-codes.
 
-'uncompyle2' is based on John Aycock's generic small languages compiler
+'uncompyle' is based on John Aycock's generic small languages compiler
 'spark' (http://www.csr.uvic.ca/~aycock/python/) and his prior work on
-'uncompyle'.
+'decompyle'.
 
 Additional note (3 July 2004, Ben Burton):
 
@@ -37,7 +37,7 @@ Features
   * decompiles byte-code from Python version 2.7
 
   * pretty-prints docstrings, hashes, lists and tuples
-  
+
   * reads directly from .pyc/.pyo files, bulk-decompile whole
     directories
 
@@ -88,8 +88,8 @@ Installation from the source distribution:
 Usage
 -----
 
-uncompyle2 -h		prints short usage
-uncompyle2 --help	prints long usage
+uncompyler -h		prints short usage
+uncompyler --help	prints long usage
 
 
 Known Bugs/Restrictions

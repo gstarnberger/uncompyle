@@ -4,12 +4,12 @@
 
 from distutils.core import setup, Extension
 
-setup (name = "uncompyle2",
+setup (name = "uncompyle",
        version = "1.1",
        description = "Python byte-code to source-code converter",
        author = "Hartmut Goebel",
        author_email = "hartmut@oberon.noris.de",
-       url = "http://github.com/sysfrog/uncompyle",
-       packages=['uncompyle2', 'uncompyle2.dis', 'uncompyle2.opcode'],
-       scripts=['scripts/uncompyle.py'],
+       url = "http://github.com/gstarnberger/uncompyle",
+       packages=['uncompyle', 'uncompyle.dis', 'uncompyle.opcode'],
+       scripts=['scripts/uncompyler.py'],
       )

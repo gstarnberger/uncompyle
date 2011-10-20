@@ -4,23 +4,23 @@
 # Copyright (c) 2000-2002 by hartmut Goebel <hartmut@goebel.noris.de>
 #
 """
-Usage: uncompyle [OPTIONS]... [ FILE | DIR]...
+Usage: uncompyler [OPTIONS]... [ FILE | DIR]...
 
 Examples:
-  uncompyle      foo.pyc bar.pyc       # uncompyle foo.pyc, bar.pyc to stdout
-  uncompyle -o . foo.pyc bar.pyc       # uncompyle to ./foo.dis and ./bar.dis
-  uncompyle -o /tmp /usr/lib/python1.5 # uncompyle whole library
+  uncompyler      foo.pyc bar.pyc       # uncompyle foo.pyc, bar.pyc to stdout
+  uncompyler -o . foo.pyc bar.pyc       # uncompyle to ./foo.dis and ./bar.dis
+  uncompyler -o /tmp /usr/lib/python1.5 # uncompyle whole library
 
 Options:
   -o <path>     output decompiled files to this path:
                 if multiple input files are decompiled, the common prefix
                 is stripped from these names and the remainder appended to
                 <path>
-                  uncompyle -o /tmp bla/fasel.pyc bla/foo.pyc
+                  uncompyler -o /tmp bla/fasel.pyc bla/foo.pyc
                     -> /tmp/fasel.dis, /tmp/foo.dis
-                  uncompyle -o /tmp bla/fasel.pyc bar/foo.pyc
+                  uncompyler -o /tmp bla/fasel.pyc bar/foo.pyc
                     -> /tmp/bla/fasel.dis, /tmp/bar/foo.dis
-                  uncompyle -o /tmp /usr/lib/python1.5
+                  uncompyler -o /tmp /usr/lib/python1.5
                     -> /tmp/smtplib.dis ... /tmp/lib-tk/FixTk.dis
   -c <file>     attempts a disassembly after compiling <file>
   -d            do not print timestamps
@@ -42,7 +42,7 @@ Extensions of generated files:
 from threading import Thread
 from multiprocessing import Process, Queue
 from Queue import Empty
-from uncompyle2 import main, verify
+from uncompyle import main, verify
 
 def process_func(src_base, out_base, codes, outfile, showasm, showast, do_verify, fqueue, rqueue):
     try:
