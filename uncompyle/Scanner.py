@@ -29,12 +29,12 @@ class Token:
         else:
             return cmp(self.type, o)
 
-    def __repr__(self):		return str(self.type)
+    def __repr__(self):     return str(self.type)
     def __str__(self):
         pattr = self.pattr or ''
         return '%s\t%-17s %r' % (self.offset, self.type, pattr)
-    def __hash__(self):		return hash(self.type)
-    def __getitem__(self, i):	raise IndexError
+    def __hash__(self):     return hash(self.type)
+    def __getitem__(self, i):   raise IndexError
 
 
 class Code:
@@ -186,7 +186,7 @@ class Scanner:
                         # now holds Code(const) and thus can not be used
                         # for comparism (todo: think about changing this)
                         #pattr = 'code_object @ 0x%x %s->%s' %\
-                        #	(id(const), const.co_filename, const.co_name)
+                        #   (id(const), const.co_filename, const.co_name)
                         pattr = '<code_object ' + const.co_name + '>'
                     else:
                         pattr = const

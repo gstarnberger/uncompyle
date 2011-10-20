@@ -88,8 +88,8 @@ Installation from the source distribution:
 Usage
 -----
 
-uncompyler -h		prints short usage
-uncompyler --help	prints long usage
+uncompyler -h       prints short usage
+uncompyler --help   prints long usage
 
 
 Known Bugs/Restrictions

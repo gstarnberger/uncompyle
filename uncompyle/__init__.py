@@ -38,8 +38,8 @@ def _load_file(filename):
 
     _load_module(filename: string): code_object
 
-    filename:	name of file containing Python source code
-    		(normally a .py)
+    filename:   name of file containing Python source code
+            (normally a .py)
     code_object: code_object compiled from this source code
 
     This function does NOT write any file!
@@ -59,8 +59,8 @@ def _load_module(filename):
     load a module without importing it
     _load_module(filename: string): code_object
 
-    filename:	name of file containing Python byte-code object
-    		(normally a .pyc)
+    filename:   name of file containing Python byte-code object
+            (normally a .pyc)
     code_object: code_object from this file
     """
     import magics, marshal
@@ -140,15 +140,15 @@ else:
 def main(in_base, out_base, files, codes, outfile=None,
          showasm=0, showast=0, do_verify=0):
     """
-    in_base	base directory for input files
-    out_base	base directory for output files (ignored when
-    files	list of filenames to be uncompyled (relative to src_base)
-    outfile	write output to this filename (overwrites out_base)
+    in_base base directory for input files
+    out_base    base directory for output files (ignored when
+    files   list of filenames to be uncompyled (relative to src_base)
+    outfile write output to this filename (overwrites out_base)
 
     For redirecting output to
-    - <filename>		outfile=<filename> (out_base is ignored)
-    - files below out_base	out_base=...
-    - stdout			out_base=None, outfile=None
+    - <filename>        outfile=<filename> (out_base is ignored)
+    - files below out_base  out_base=...
+    - stdout            out_base=None, outfile=None
     """
     def _get_outstream(outfile):
         dir = os.path.dirname(outfile)
@@ -202,7 +202,7 @@ def main(in_base, out_base, files, codes, outfile=None,
                 import traceback
                 traceback.print_exc()
             #raise
-	else: # uncompyle successfull
+    else: # uncompyle successfull
             if outfile:
                 outstream.close()
             if do_verify:

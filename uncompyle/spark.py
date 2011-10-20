@@ -107,7 +107,7 @@ class GenericParser:
         self.rule2func = {}
         self.rule2name = {}
         self.collectRules()
-        start = D['rules'][self._START][0][1][1]	# Blech.
+        start = D['rules'][self._START][0][1][1]    # Blech.
         self.augment(start)
         D['rule2func'] = self.rule2func
         D['makeSet'] = self.makeSet_fast
@@ -118,7 +118,7 @@ class GenericParser:
     #  thee not with this; nor shall thee toucheth the _preprocess
     #  argument to addRule.
     #
-    def preprocess(self, rule, func):	return rule, func
+    def preprocess(self, rule, func):   return rule, func
 
     def addRule(self, doc, func, _preprocess=1):
         fn = func
@@ -267,7 +267,7 @@ class GenericParser:
             sets.append([])
 
             if sets[i] == []:
-                break				
+                break               
             self.makeSet(tokens[i], sets, i)
         else:
             sets.append([])
@@ -507,7 +507,7 @@ class GenericParser:
                         why = (item, i, rule)
                         pptr = (pitem, parent)
                         #self.add(cur, (k, pparent),
-                        #	 i, pptr, why)
+                        #    i, pptr, why)
                         #INLINED --v
                         new = (k, pparent)
                         key = (new, i)
@@ -594,8 +594,8 @@ class GenericParser:
     def ambiguity(self, rules):
         #
         #  XXX - problem here and in collectRules() if the same rule
-        #	 appears in >1 method.  Also undefined results if rules
-        #	 causing the ambiguity appear in the same method.
+        #    appears in >1 method.  Also undefined results if rules
+        #    causing the ambiguity appear in the same method.
         #
         
         sortlist = []
