@@ -124,7 +124,7 @@ if numproc <= 1:
     try:
         result = main(src_base, out_base, files, codes, outfile, showasm, showast, do_verify)
         print '# decompiled %i files: %i okay, %i failed, %i verify failed' % result
-    except (KeyboardInterrupt, OSError):
+    except (KeyboardInterrupt):
         pass
     except verify.VerifyCmpError:
         raise
@@ -152,7 +152,7 @@ else:
                 okay_files += o
                 failed_files += f
                 verify_failed_files += v
-        except (Empty, KeyboardInterrupt, OSError):
+        except (Empty, KeyboardInterrupt):
             pass
         rqueue.put((tot_files, okay_files, failed_files, verify_failed_files))
         rqueue.close()

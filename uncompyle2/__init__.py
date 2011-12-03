@@ -154,11 +154,10 @@ def main(in_base, out_base, files, codes, outfile=None,
         dir = os.path.dirname(outfile)
         failed_file = outfile + '_failed'
         if os.path.exists(failed_file): os.remove(failed_file)
-        if not os.path.exists(dir):
-            try:
-                os.makedirs(dir)
-            except:
-                raise "Can't create output dir '%s'" % dir
+        try:
+            os.makedirs(dir)
+        except OSError:
+            pass
         return open(outfile, 'w')
 
     of = outfile

@@ -749,12 +749,12 @@ class Scanner:
                              or ((ord(code[self.lines[j][1]-3]) == POP_JUMP_IF_TRUE)
                                  and (ord(code[self.__get_target(code, self.lines[j][1]-3)-3]) == POP_JUMP_IF_FALSE)
                                  and (self.__get_target(code, self.__get_target(code, self.lines[j][1]-3)-3) == target))))
-                       or (ord(code[self.prev[self.lines[j][1]]]) in (LOAD_ATTR, LOAD_FAST))):
+                       or (ord(code[self.prev[self.lines[j][1]]]) in (LOAD_ATTR, LOAD_FAST, JUMP_IF_FALSE_OR_POP, JUMP_IF_TRUE_OR_POP))):
                     if (self.if_lines.get(i, False) and (self.__get_target(code, self.lines[j][1]-3) == target)):
                         num_pj += 1
                     j = self.lines[j][1]
                     i = self.lines[j][0]
-                    if (ord(code[self.prev[j]]) not in (LOAD_ATTR, LOAD_FAST)):
+                    if (ord(code[self.prev[j]]) not in (LOAD_ATTR, LOAD_FAST, JUMP_IF_FALSE_OR_POP, JUMP_IF_TRUE_OR_POP)):
                         k = j
                 if k > next_line_byte:
                     if num_pj > 1 and target > pos:
@@ -844,7 +844,12 @@ class Scanner:
                 self.__structs.append({'type':  'if-then',
                                        'start': start,
                                        'end':   rtarget})
-                
+        elif op in (JUMP_IF_FALSE_OR_POP, JUMP_IF_TRUE_OR_POP):
+            target = self.__get_target(code, pos, op)
+            if target > pos:
+                unop_target = self.__last_instr(code, pos, target, JUMP_FORWARD, target)
+                if unop_target and ord(code[unop_target+3]) != self.dis.opmap['ROT_TWO']:
+                    self.__fixed_jumps[pos] = unop_target
                 
                 
              
