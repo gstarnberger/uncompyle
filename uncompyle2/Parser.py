@@ -560,7 +560,7 @@ class Parser(GenericASTBuilder):
                 POP_BLOCK LOAD_CONST COME_FROM
                 WITH_CLEANUP END_FINALLY
 
-        withasstmt ::= expr SETUP_WITH designator stmts
+        withasstmt ::= expr SETUP_WITH designator stmts_opt
                 POP_BLOCK LOAD_CONST COME_FROM
                 WITH_CLEANUP END_FINALLY
 

@@ -276,7 +276,7 @@ class Scanner:
         Return index to it or None if not found.
         """
 
-        assert(start>=0 and end<len(code))
+        assert(start>=0 and end<=len(code))
 
         HAVE_ARGUMENT = self.dis.HAVE_ARGUMENT
 
@@ -317,7 +317,7 @@ class Scanner:
         Return index to it or None if not found.
         """
 
-        if not (start>=0 and end<len(code)):
+        if not (start>=0 and end<=len(code)):
             return None
 
         HAVE_ARGUMENT = self.dis.HAVE_ARGUMENT
@@ -359,7 +359,7 @@ class Scanner:
         Return a list with indexes to them or [] if none found.
         """
 
-        assert(start>=0 and end<len(code))
+        assert(start>=0 and end<=len(code))
 
         HAVE_ARGUMENT = self.dis.HAVE_ARGUMENT
 
@@ -690,7 +690,7 @@ class Scanner:
                             good_op = True
                     else:
                         if start < target < next_line_byte:
-                            if ord(code[self.prev[target]]) in (JUMP_ABSOLUTE, JUMP_FORWARD):
+                            if ord(code[self.prev[target]]) in (JUMP_ABSOLUTE, JUMP_FORWARD, RETURN_VALUE):
                                 good_op = True
                         while p_op in (JUMP_ABSOLUTE, JUMP_FORWARD, POP_BLOCK):
                             if p_op in (JUMP_ABSOLUTE, JUMP_FORWARD):
