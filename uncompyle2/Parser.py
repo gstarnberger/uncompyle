@@ -821,6 +821,8 @@ def parse(tokens, customize):
                   ('expr '*v, k), nop)
             p.addRule('genexpr ::= %s load_closure LOAD_GENEXPR %s expr GET_ITER CALL_FUNCTION_1' %
                   ('expr '*v, k), nop)
+            p.addRule('setcomp ::= %s load_closure LOAD_SETCOMP %s expr GET_ITER CALL_FUNCTION_1' %
+                  ('expr '*v, k), nop)
             p.addRule('dictcomp ::= %s load_closure LOAD_DICTCOMP %s expr GET_ITER CALL_FUNCTION_1' %
                   ('expr '*v, k), nop)
             rule = 'mkfunc ::= %s load_closure LOAD_CONST %s' % ('expr '*v, k)
