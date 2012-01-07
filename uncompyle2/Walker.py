@@ -90,7 +90,6 @@ TAB = ' ' *4   # is less spacy than "\t"
 INDENT_PER_LEVEL = ' ' # additional intent per pretty-print level
 
 TABLE_R = {
-    'build_tuple2':	( '%C', (0,-1,', ') ),
     'POP_TOP':		( '%|%c\n', 0 ),
     'STORE_ATTR':	( '%c.%[1]{pattr}', 0),
 #   'STORE_SUBSCR':	( '%c[%c]', 0, 1 ),
@@ -174,6 +173,7 @@ TABLE_DIRECT = {
     'STORE_DEREF':	( '%{pattr}', ),
     'unpack':		( '(%C,)', (1, sys.maxint, ', ') ),
     'unpack_list':	( '[%C]', (1, sys.maxint, ', ') ),
+    'build_tuple2':	( '%P', (0,-1,', ', 100) ),
 
     #'list_compr':	( '[ %c ]', -2),	# handled by n_list_compr
     'list_iter':	( '%c', 0),
@@ -337,6 +337,8 @@ PRECEDENCE = {
     'slice1':               2,
     'slice2':               2,
     'slice3':               2,
+    'buildslice2':          2,
+    'buildslice3':          2,
     'call_function':        2,
     
     'BINARY_POWER':         4,
@@ -528,6 +530,25 @@ class Walker(GenericASTTraversal, object):
             self.print_()
             self.prune() # stop recursing
         
+    def n_buildslice3(self, node):
+        if node[0] != NONE:
+            self.preorder(node[0])
+        self.write(':')
+        if node[1] != NONE:
+            self.preorder(node[1])
+        self.write(':')
+        if node[2] != NONE:
+            self.preorder(node[2])
+        self.prune() # stop recursing
+
+    def n_buildslice2(self, node):
+        if node[0] != NONE:
+            self.preorder(node[0])
+        self.write(':')
+        if node[1] != NONE:
+            self.preorder(node[1])
+        self.prune() # stop recursing
+
 #    def n_l_stmts(self, node):
 #        if node[0] == '_stmts':
 #            if len(node[0]) >= 2 and node[0][1] == 'stmt':
@@ -583,10 +604,14 @@ class Walker(GenericASTTraversal, object):
 
 
     def n_delete_subscr(self, node):
-        maybe_tuple = node[-2][-1]
-        if maybe_tuple.type.startswith('BUILD_TUPLE'):
-            maybe_tuple.type = 'build_tuple2'
-        self.default(node)
+        if node[-2][0] == 'build_list' and node[-2][0][-1].type.startswith('BUILD_TUPLE'):
+            if node[-2][0][-1] != 'BUILD_TUPLE_0':
+                node[-2][0].type = 'build_tuple2'
+        self.default(node)        
+#        maybe_tuple = node[-2][-1]
+#        if maybe_tuple.type.startswith('BUILD_TUPLE'):
+#            maybe_tuple.type = 'build_tuple2'
+#        self.default(node)
 
     n_store_subscr = n_binary_subscr = n_delete_subscr
         
@@ -680,7 +705,7 @@ class Walker(GenericASTTraversal, object):
         self.write( ' ]')
         self.prune() # stop recursing
         self.prec = p
-
+    
     def comprehension_walk(self, node, iter_index):
         p = self.prec
         self.prec = 100

@@ -650,6 +650,8 @@ class Parser(GenericASTBuilder):
         expr ::= slice1
         expr ::= slice2
         expr ::= slice3
+        expr ::= buildslice2
+        expr ::= buildslice3
         
         
         binary_expr ::= expr expr binary_op
@@ -688,7 +690,9 @@ class Parser(GenericASTBuilder):
         slice2 ::= expr expr DUP_TOPX_2 SLICE+2
         slice3 ::= expr expr expr SLICE+3
         slice3 ::= expr expr expr DUP_TOPX_3 SLICE+3
-
+        buildslice3 ::= expr expr expr BUILD_SLICE_3
+        buildslice2 ::= expr expr BUILD_SLICE_2
+        
         _mklambda ::= load_closure mklambda
         _mklambda ::= mklambda
 
@@ -780,7 +784,6 @@ def parse(tokens, customize):
     #
     #    expr ::= {expr}^n BUILD_LIST_n
     #    expr ::= {expr}^n BUILD_TUPLE_n
-    #    expr ::= {expr}^n BUILD_SLICE_n
     #    unpack_list ::= UNPACK_LIST {expr}^n
     #    unpack ::= UNPACK_TUPLE {expr}^n
     #    unpack ::= UNPACK_SEQEUENE {expr}^n
@@ -802,8 +805,6 @@ def parse(tokens, customize):
         op = k[:string.rfind(k, '_')]
         if op in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SET'):
             rule = 'build_list ::= ' + 'expr '*v + k
-        elif op == 'BUILD_SLICE':
-            rule = 'expr ::= ' + 'expr '*v + k
         elif op in ('UNPACK_TUPLE', 'UNPACK_SEQUENCE'):
             rule = 'unpack ::= ' + k + ' designator'*v
         elif op == 'UNPACK_LIST':

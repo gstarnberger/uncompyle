@@ -207,7 +207,7 @@ class Scanner:
 
             if opname == 'SET_LINENO':
                 continue
-            elif opname in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SLICE', 'BUILD_SET',
+            elif opname in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SET', 'BUILD_SLICE',
                             'UNPACK_LIST', 'UNPACK_TUPLE', 'UNPACK_SEQUENCE',
                             'MAKE_FUNCTION', 'CALL_FUNCTION', 'MAKE_CLOSURE',
                             'CALL_FUNCTION_VAR', 'CALL_FUNCTION_KW',
@@ -221,7 +221,8 @@ class Scanner:
                     continue
                 else:
                     opname = '%s_%d' % (opname, oparg)
-                    customize[opname] = oparg
+                    if opname not in ('BUILD_SLICE_2', 'BUILD_SLICE_3'):
+                        customize[opname] = oparg
 #            elif opname == 'POP_JUMP_IF_TRUE':
 #                target = self.__get_target(code, offset)
 #                if (dis.opname[ord(code[target])] == 'FOR_ITER') and (self.lines[offset] != self.lines[offset+3]):
