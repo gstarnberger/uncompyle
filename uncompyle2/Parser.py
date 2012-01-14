@@ -326,13 +326,6 @@ class Parser(GenericASTBuilder):
 
         return_stmt ::= expr RETURN_VALUE
 
-        stmt ::= yield_stmt
-        yield_stmt ::= expr YIELD_STMT
-        yield_stmt ::= expr YIELD_STMT POP_TOP
-
-        yield_stmt ::= expr YIELD_VALUE
-        yield_stmt ::= expr YIELD_VALUE POP_TOP
-
         stmt ::= break_stmt
         break_stmt ::= BREAK_LOOP
         
@@ -652,6 +645,8 @@ class Parser(GenericASTBuilder):
         expr ::= slice3
         expr ::= buildslice2
         expr ::= buildslice3
+        expr ::= yield
+
         
         
         binary_expr ::= expr expr binary_op
@@ -693,6 +688,8 @@ class Parser(GenericASTBuilder):
         buildslice3 ::= expr expr expr BUILD_SLICE_3
         buildslice2 ::= expr expr BUILD_SLICE_2
         
+        yield ::= expr YIELD_VALUE
+
         _mklambda ::= load_closure mklambda
         _mklambda ::= mklambda
 

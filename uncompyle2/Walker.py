@@ -242,7 +242,7 @@ TABLE_DIRECT = {
     'continue_stmt':	( '%|continue\n', ),
     'jcontinue_stmt':	( '%|continue\n', ),
     'raise_stmt':	( '%|raise %[0]C\n', (0,sys.maxint,', ') ),
-    'yield_stmt':	( '%|yield %c\n', 0),
+    'yield':	( 'yield %c', 0),
 #    'return_stmt':	( '%|return %c\n', 0),
 
     'ifstmt':		( '%|if %c:\n%+%c%-', 0, 1 ),
@@ -375,7 +375,8 @@ PRECEDENCE = {
     'conditionaland':       28,
     'conditionalnot':       28,
     
-    '_mklambda':            30
+    '_mklambda':            30,
+    'yield':                30
 }
 
 ASSIGN_TUPLE_PARAM = lambda param_name: \
