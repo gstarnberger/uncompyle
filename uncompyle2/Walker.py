@@ -191,7 +191,7 @@ TABLE_DIRECT = {
     'gen_comp_body':    ( '%c', 0 ),
     'dict_comp_body':   ( '%c:%c', 1, 0 ),
     
-    'assign':		( '%|%c = %c\n', -1, 0 ),
+    'assign':		( '%|%c = %p\n', -1, (0,200) ),
     'augassign1':	( '%|%c %c %c\n', 0, 2, 1),
     'augassign2':	( '%|%c.%[2]{pattr} %c %c\n', 0, -3, -4),
 #   'dup_topx':		( '%c', 0),
@@ -237,12 +237,12 @@ TABLE_DIRECT = {
     'print_nl_to':	( '%|print >> %c\n', 0 ),
     'print_to_items':	( '%C', (0, 2, ', ') ),
 
-    'call_stmt':	( '%|%c\n', 0),
+    'call_stmt':	( '%|%p\n', (0,200)),
     'break_stmt':	( '%|break\n', ),
     'continue_stmt':	( '%|continue\n', ),
     'jcontinue_stmt':	( '%|continue\n', ),
     'raise_stmt':	( '%|raise %[0]C\n', (0,sys.maxint,', ') ),
-    'yield':	( 'yield %c', 0),
+#    'yield':	( 'yield %c', 0),
 #    'return_stmt':	( '%|return %c\n', 0),
 
     'ifstmt':		( '%|if %c:\n%+%c%-', 0, 1 ),
@@ -376,7 +376,7 @@ PRECEDENCE = {
     'conditionalnot':       28,
     
     '_mklambda':            30,
-    'yield':                30
+    'yield':                101
 }
 
 ASSIGN_TUPLE_PARAM = lambda param_name: \
@@ -531,6 +531,13 @@ class Walker(GenericASTTraversal, object):
             self.print_()
             self.prune() # stop recursing
         
+    def n_yield(self, node):
+        self.write('yield')
+        if node != AST('yield', [NONE, Token('YIELD_VALUE')]):
+            self.write(' ')
+            self.preorder(node[0])
+        self.prune() # stop recursing
+
     def n_buildslice3(self, node):
         if node[0] != NONE:
             self.preorder(node[0])
