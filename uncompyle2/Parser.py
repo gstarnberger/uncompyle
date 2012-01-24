@@ -95,7 +95,7 @@ class Parser(GenericASTBuilder):
         _come_from ::= 
 
         
-        list_for ::= expr _for designator list_iter JUMP_BACK COME_FROM
+        list_for ::= expr _for designator list_iter JUMP_BACK
         list_if ::= expr jmp_false list_iter               
         list_if_not ::= expr jmp_true list_iter               
 
@@ -111,7 +111,7 @@ class Parser(GenericASTBuilder):
         stmt ::= setcomp_func
         
         setcomp_func ::= BUILD_SET_0 LOAD_FAST FOR_ITER designator comp_iter
-                JUMP_BACK COME_FROM RETURN_VALUE RETURN_LAST
+                JUMP_BACK RETURN_VALUE RETURN_LAST
         
         comp_iter ::= comp_if
         comp_iter ::= comp_ifnot
@@ -126,7 +126,7 @@ class Parser(GenericASTBuilder):
 
         comp_if ::= expr jmp_false comp_iter
         comp_ifnot ::= expr jmp_true comp_iter
-        comp_for ::= expr _for designator comp_iter JUMP_BACK COME_FROM
+        comp_for ::= expr _for designator comp_iter JUMP_BACK
         '''
 
 
@@ -138,7 +138,7 @@ class Parser(GenericASTBuilder):
         
         stmt ::= genexpr_func
         
-        genexpr_func ::= LOAD_FAST FOR_ITER designator comp_iter JUMP_BACK COME_FROM
+        genexpr_func ::= LOAD_FAST FOR_ITER designator comp_iter JUMP_BACK
         '''
 
 
@@ -149,7 +149,7 @@ class Parser(GenericASTBuilder):
         stmt ::= dictcomp_func
         
         dictcomp_func ::= BUILD_MAP LOAD_FAST FOR_ITER designator
-                comp_iter JUMP_BACK COME_FROM RETURN_VALUE RETURN_LAST
+                comp_iter JUMP_BACK RETURN_VALUE RETURN_LAST
 
         '''
 
@@ -587,24 +587,24 @@ class Parser(GenericASTBuilder):
 
         forstmt ::= SETUP_LOOP expr _for designator
                 l_stmts_opt _jump_back
-                COME_FROM POP_BLOCK COME_FROM
+                POP_BLOCK COME_FROM
         forstmt ::= SETUP_LOOP expr _for designator
                 return_stmts 
-                COME_FROM POP_BLOCK COME_FROM
+                POP_BLOCK COME_FROM
 
         forelsestmt ::= SETUP_LOOP expr _for designator
                 l_stmts_opt _jump_back
-                COME_FROM POP_BLOCK stmts COME_FROM
+                POP_BLOCK stmts COME_FROM
         forelsestmt ::= SETUP_LOOP expr _for designator
                 return_stmts _come_from
-                COME_FROM POP_BLOCK stmts COME_FROM
+                POP_BLOCK stmts COME_FROM
 
         forelselaststmt ::= SETUP_LOOP expr _for designator
                 l_stmts_opt _jump_back
-                COME_FROM POP_BLOCK c_stmts COME_FROM
+                POP_BLOCK c_stmts COME_FROM
         forelselaststmt ::= SETUP_LOOP expr _for designator
                 return_stmts _come_from
-                COME_FROM POP_BLOCK c_stmts COME_FROM
+                POP_BLOCK c_stmts COME_FROM
 
         return_stmts ::= return_stmt
         return_stmts ::= _stmts return_stmt
