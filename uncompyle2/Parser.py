@@ -95,7 +95,7 @@ class Parser(GenericASTBuilder):
         _come_from ::= 
 
         
-        list_for ::= expr _for designator list_iter JUMP_BACK COME_FROM
+        list_for ::= expr _for designator list_iter JUMP_BACK
         list_if ::= expr jmp_false list_iter               
         list_if_not ::= expr jmp_true list_iter               
 
@@ -111,7 +111,7 @@ class Parser(GenericASTBuilder):
         stmt ::= setcomp_func
         
         setcomp_func ::= BUILD_SET_0 LOAD_FAST FOR_ITER designator comp_iter
-                JUMP_BACK COME_FROM RETURN_VALUE RETURN_LAST
+                JUMP_BACK RETURN_VALUE RETURN_LAST
         
         comp_iter ::= comp_if
         comp_iter ::= comp_ifnot
@@ -126,7 +126,7 @@ class Parser(GenericASTBuilder):
 
         comp_if ::= expr jmp_false comp_iter
         comp_ifnot ::= expr jmp_true comp_iter
-        comp_for ::= expr _for designator comp_iter JUMP_BACK COME_FROM
+        comp_for ::= expr _for designator comp_iter JUMP_BACK
         '''
 
 
@@ -138,7 +138,7 @@ class Parser(GenericASTBuilder):
         
         stmt ::= genexpr_func
         
-        genexpr_func ::= LOAD_FAST FOR_ITER designator comp_iter JUMP_BACK COME_FROM
+        genexpr_func ::= LOAD_FAST FOR_ITER designator comp_iter JUMP_BACK
         '''
 
 
@@ -149,7 +149,7 @@ class Parser(GenericASTBuilder):
         stmt ::= dictcomp_func
         
         dictcomp_func ::= BUILD_MAP LOAD_FAST FOR_ITER designator
-                comp_iter JUMP_BACK COME_FROM RETURN_VALUE RETURN_LAST
+                comp_iter JUMP_BACK RETURN_VALUE RETURN_LAST
 
         '''
 
@@ -325,13 +325,6 @@ class Parser(GenericASTBuilder):
         call_stmt ::= expr POP_TOP
 
         return_stmt ::= expr RETURN_VALUE
-
-        stmt ::= yield_stmt
-        yield_stmt ::= expr YIELD_STMT
-        yield_stmt ::= expr YIELD_STMT POP_TOP
-
-        yield_stmt ::= expr YIELD_VALUE
-        yield_stmt ::= expr YIELD_VALUE POP_TOP
 
         stmt ::= break_stmt
         break_stmt ::= BREAK_LOOP
@@ -560,7 +553,7 @@ class Parser(GenericASTBuilder):
                 POP_BLOCK LOAD_CONST COME_FROM
                 WITH_CLEANUP END_FINALLY
 
-        withasstmt ::= expr SETUP_WITH designator stmts
+        withasstmt ::= expr SETUP_WITH designator stmts_opt
                 POP_BLOCK LOAD_CONST COME_FROM
                 WITH_CLEANUP END_FINALLY
 
@@ -594,24 +587,24 @@ class Parser(GenericASTBuilder):
 
         forstmt ::= SETUP_LOOP expr _for designator
                 l_stmts_opt _jump_back
-                COME_FROM POP_BLOCK COME_FROM
+                POP_BLOCK COME_FROM
         forstmt ::= SETUP_LOOP expr _for designator
                 return_stmts 
-                COME_FROM POP_BLOCK COME_FROM
+                POP_BLOCK COME_FROM
 
         forelsestmt ::= SETUP_LOOP expr _for designator
                 l_stmts_opt _jump_back
-                COME_FROM POP_BLOCK stmts COME_FROM
+                POP_BLOCK stmts COME_FROM
         forelsestmt ::= SETUP_LOOP expr _for designator
                 return_stmts _come_from
-                COME_FROM POP_BLOCK stmts COME_FROM
+                POP_BLOCK stmts COME_FROM
 
         forelselaststmt ::= SETUP_LOOP expr _for designator
                 l_stmts_opt _jump_back
-                COME_FROM POP_BLOCK c_stmts COME_FROM
+                POP_BLOCK c_stmts COME_FROM
         forelselaststmt ::= SETUP_LOOP expr _for designator
                 return_stmts _come_from
-                COME_FROM POP_BLOCK c_stmts COME_FROM
+                POP_BLOCK c_stmts COME_FROM
 
         return_stmts ::= return_stmt
         return_stmts ::= _stmts return_stmt
@@ -650,6 +643,10 @@ class Parser(GenericASTBuilder):
         expr ::= slice1
         expr ::= slice2
         expr ::= slice3
+        expr ::= buildslice2
+        expr ::= buildslice3
+        expr ::= yield
+
         
         
         binary_expr ::= expr expr binary_op
@@ -688,6 +685,10 @@ class Parser(GenericASTBuilder):
         slice2 ::= expr expr DUP_TOPX_2 SLICE+2
         slice3 ::= expr expr expr SLICE+3
         slice3 ::= expr expr expr DUP_TOPX_3 SLICE+3
+        buildslice3 ::= expr expr expr BUILD_SLICE_3
+        buildslice2 ::= expr expr BUILD_SLICE_2
+        
+        yield ::= expr YIELD_VALUE
 
         _mklambda ::= load_closure mklambda
         _mklambda ::= mklambda
@@ -780,7 +781,6 @@ def parse(tokens, customize):
     #
     #    expr ::= {expr}^n BUILD_LIST_n
     #    expr ::= {expr}^n BUILD_TUPLE_n
-    #    expr ::= {expr}^n BUILD_SLICE_n
     #    unpack_list ::= UNPACK_LIST {expr}^n
     #    unpack ::= UNPACK_TUPLE {expr}^n
     #    unpack ::= UNPACK_SEQEUENE {expr}^n
@@ -802,8 +802,6 @@ def parse(tokens, customize):
         op = k[:string.rfind(k, '_')]
         if op in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SET'):
             rule = 'build_list ::= ' + 'expr '*v + k
-        elif op == 'BUILD_SLICE':
-            rule = 'expr ::= ' + 'expr '*v + k
         elif op in ('UNPACK_TUPLE', 'UNPACK_SEQUENCE'):
             rule = 'unpack ::= ' + k + ' designator'*v
         elif op == 'UNPACK_LIST':
@@ -820,6 +818,8 @@ def parse(tokens, customize):
             p.addRule('mklambda ::= %s load_closure LOAD_LAMBDA %s' %
                   ('expr '*v, k), nop)
             p.addRule('genexpr ::= %s load_closure LOAD_GENEXPR %s expr GET_ITER CALL_FUNCTION_1' %
+                  ('expr '*v, k), nop)
+            p.addRule('setcomp ::= %s load_closure LOAD_SETCOMP %s expr GET_ITER CALL_FUNCTION_1' %
                   ('expr '*v, k), nop)
             p.addRule('dictcomp ::= %s load_closure LOAD_DICTCOMP %s expr GET_ITER CALL_FUNCTION_1' %
                   ('expr '*v, k), nop)
