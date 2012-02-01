@@ -7,9 +7,9 @@
 Usage: uncompyle [OPTIONS]... [ FILE | DIR]...
 
 Examples:
-  uncompyle      foo.pyc bar.pyc       # uncompyle foo.pyc, bar.pyc to stdout
-  uncompyle -o . foo.pyc bar.pyc       # uncompyle to ./foo.dis and ./bar.dis
-  uncompyle -o /tmp /usr/lib/python1.5 # uncompyle whole library
+  uncompyle.py      foo.pyc bar.pyc       # uncompyle foo.pyc, bar.pyc to stdout
+  uncompyle.py -o . foo.pyc bar.pyc       # uncompyle to ./foo.dis and ./bar.dis
+  uncompyle.py -o /tmp /usr/lib/python1.5 # uncompyle whole library
 
 Options:
   -o <path>     output decompiled files to this path:
@@ -64,7 +64,7 @@ def process_func(src_base, out_base, codes, outfile, showasm, showast, do_verify
 
 if __name__ == '__main__':
     Usage_short = \
-    "decomyple [--help] [--verify] [--showasm] [--showast] [-o <path>] FILE|DIR..."
+    "uncompyle.py [--help] [--verify] [--showasm] [--showast] [-o <path>] FILE|DIR..."
 
     import sys, os, getopt
     import os.path
@@ -151,6 +151,12 @@ if __name__ == '__main__':
         except verify.VerifyCmpError:
             raise
     else:
+        # create directories beforehand
+        for f in files:
+          try:
+            os.makedirs(os.path.join(out_base, os.path.dirname(f)))
+          except OSError:
+            pass
         fqueue = Queue(len(files)+numproc)
         for f in files:
             fqueue.put(f)
