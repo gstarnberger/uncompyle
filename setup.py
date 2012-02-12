@@ -10,6 +10,6 @@ setup (name = "uncompyle",
        author = "Hartmut Goebel",
        author_email = "hartmut@oberon.noris.de",
        url = "http://github.com/gstarnberger/uncompyle",
-       packages=['uncompyle', 'uncompyle.dis', 'uncompyle.opcode'],
+       packages=['uncompyle'],
        scripts=['scripts/uncompyler.py'],
       )

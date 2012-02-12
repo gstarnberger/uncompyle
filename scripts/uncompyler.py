@@ -151,6 +151,12 @@ if __name__ == '__main__':
         except verify.VerifyCmpError:
             raise
     else:
+        # create directories beforehand
+        for f in files:
+          try:
+            os.makedirs(os.path.join(out_base, os.path.dirname(f)))
+          except OSError:
+            pass
         fqueue = Queue(len(files)+numproc)
         for f in files:
             fqueue.put(f)

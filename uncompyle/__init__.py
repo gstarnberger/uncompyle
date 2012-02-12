@@ -68,10 +68,10 @@ def _load_module(filename):
     magic = fp.read(4)
     try:
         version = magics.versions[magic]
-        # marshal = marshal_files.import_(magic=magic)
     except KeyError:
-#        raise ImportError, "Unknown magic number in %s" % filename
-        version = '2.7'
+        raise ImportError, "Unknown magic number %s in %s" % (ord(magic[0])+256*ord(magic[1]), filename)
+    if version != '2.7':
+        raise ImportError, "This is a Python %s file! Only Python 2.7 files are supported."
     #print version
     fp.read(4) # timestamp
     co = marshal.load(fp)
@@ -154,11 +154,10 @@ def main(in_base, out_base, files, codes, outfile=None,
         dir = os.path.dirname(outfile)
         failed_file = outfile + '_failed'
         if os.path.exists(failed_file): os.remove(failed_file)
-        if not os.path.exists(dir):
-            try:
-                os.makedirs(dir)
-            except:
-                raise "Can't create output dir '%s'" % dir
+        try:
+            os.makedirs(dir)
+        except OSError:
+            pass
         return open(outfile, 'w')
 
     of = outfile
@@ -195,12 +194,12 @@ def main(in_base, out_base, files, codes, outfile=None,
             raise
         except:
             failed_files += 1
-            sys.stderr.write("### Can't uncompyle  %s\n" % infile)
+            sys.stderr.write("### Can't uncompyle %s\n" % infile)
             if outfile:
                 outstream.close()
                 os.rename(outfile, outfile + '_failed')
-                import traceback
-                traceback.print_exc()
+            import traceback
+            traceback.print_exc()
             #raise
 	else: # uncompyle successfull
             if outfile:

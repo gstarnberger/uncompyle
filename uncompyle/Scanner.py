@@ -8,6 +8,10 @@
 __all__ = ['Token', 'Scanner', 'getscanner']
 
 import types
+import dis
+
+globals().update(dis.opmap)
+
 
 class Token:
     """
@@ -44,11 +48,11 @@ class Code:
     This is similar to the original code object, but additionally
     the diassembled code is stored in the attribute '_tokens'.
     """
-    def __init__(self, co, scanner):
+    def __init__(self, co, scanner, classname=None):
         for i in dir(co):
             if i.startswith('co_'):
                 setattr(self, i, getattr(co, i))
-        self._tokens, self._customize = scanner.disassemble(co)
+        self._tokens, self._customize = scanner.disassemble(co, classname)
 
 class Scanner:
     def __init__(self, version):
@@ -57,24 +61,11 @@ class Scanner:
         from sys import version_info
         self.__pyversion = float('%d.%d' % version_info[0:2])
 
-        # use module 'dis' for this version
-        import dis.dis_files as dis_files
-        self.dis = dis_files.by_version[version]
         self.resetTokenClass()
 
-        dis = self.dis
         self.JUMP_OPs = map(lambda op: dis.opname[op],
                             dis.hasjrel + dis.hasjabs)
 
-        # setup an opmap if we don't have one
-        try:
-            dis.opmap
-        except:
-            opmap = {}
-            opname = dis.opname
-            for i in range(len(opname)):
-                opmap[opname[i]] = i
-            dis.opmap = opmap
         copmap = {}
         for i in range(len(dis.cmp_op)):
             copmap[dis.cmp_op[i]] = i
@@ -92,7 +83,7 @@ class Scanner:
     def resetTokenClass(self):
         self.setTokenClass(Token)
         
-    def disassemble(self, co):
+    def disassemble(self, co, classname=None):
         """
         Disassemble a code object, returning a list of 'Token'.
 
@@ -101,7 +92,6 @@ class Scanner:
         """
         rv = []
         customize = {}
-        dis = self.dis # shortcut
         Token = self.Token # shortcut
         code = co.co_code
         n = len(code)
@@ -128,8 +118,8 @@ class Scanner:
             while j < start_byte:
                 self.lines.append((prev_line_no, start_byte))
                 j += 1
-            last_opname = dis.opname[ord(code[self.prev[start_byte]])]
-            if last_opname in ('POP_JUMP_IF_FALSE', 'POP_JUMP_IF_TRUE'):
+            last_op = ord(code[self.prev[start_byte]])
+            if last_op in (POP_JUMP_IF_FALSE, POP_JUMP_IF_TRUE):
                 self.if_lines[prev_line_no] = True
             else:
                 self.if_lines[prev_line_no] = False
@@ -140,12 +130,24 @@ class Scanner:
         self.if_lines[prev_line_no] = False
         
         cf = self.find_jump_targets(code)
-        POP_JUMP_IF_FALSE = self.dis.opmap['POP_JUMP_IF_FALSE']
-        POP_JUMP_IF_TRUE  = self.dis.opmap['POP_JUMP_IF_TRUE']
+
+        if classname:
+            classname = '_' + classname.lstrip('_') + '__'
+            def unmangle(name):
+                if name.startswith(classname) and name[-2:] != '__':
+                    return name[len(classname) - 2:]
+                return name
+                
+            free = [ unmangle(name) for name in (co.co_cellvars + co.co_freevars) ]
+            names = [ unmangle(name) for name in co.co_names ]
+            varnames = [ unmangle(name) for name in co.co_varnames ]
+        else:
+            free = co.co_cellvars + co.co_freevars
+            names = co.co_names
+            varnames = co.co_varnames
 
         i = 0
         extended_arg = 0
-        free = None
         while i < n:
             offset = i
             k = 0
@@ -155,9 +157,6 @@ class Scanner:
                                     offset="%s_%d" % (offset, k) ))
                     k += 1
                     
-#            if self.__end_if_line.has_key(offset):
-#                rv.append(Token('END_IF_LINE', None, repr(self.__end_if_line[offset]), 
-#                            offset="%s_" % offset ))
             c = code[i]
             op = ord(c)
             opname = dis.opname[op]
@@ -191,23 +190,19 @@ class Scanner:
                     else:
                         pattr = const
                 elif op in dis.hasname:
-                    pattr = co.co_names[oparg]
+                    pattr = names[oparg]
                 elif op in dis.hasjrel:
                     pattr = repr(i + oparg)
                 elif op in dis.hasjabs:
                     pattr = repr(oparg)
                 elif op in dis.haslocal:
-                    pattr = co.co_varnames[oparg]
+                    pattr = varnames[oparg]
                 elif op in dis.hascompare:
                     pattr = dis.cmp_op[oparg]
                 elif op in dis.hasfree:
-                    if free is None:
-                        free = co.co_cellvars + co.co_freevars
                     pattr = free[oparg]
 
-            if opname == 'SET_LINENO':
-                continue
-            elif opname in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SLICE', 'BUILD_SET',
+            if opname in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SET', 'BUILD_SLICE',
                             'UNPACK_LIST', 'UNPACK_TUPLE', 'UNPACK_SEQUENCE',
                             'MAKE_FUNCTION', 'CALL_FUNCTION', 'MAKE_CLOSURE',
                             'CALL_FUNCTION_VAR', 'CALL_FUNCTION_KW',
@@ -221,11 +216,8 @@ class Scanner:
                     continue
                 else:
                     opname = '%s_%d' % (opname, oparg)
-                    customize[opname] = oparg
-#            elif opname == 'POP_JUMP_IF_TRUE':
-#                target = self.__get_target(code, offset)
-#                if (dis.opname[ord(code[target])] == 'FOR_ITER') and (self.lines[offset] != self.lines[offset+3]):
-#                    opname = 'CONTINUE_IF_TRUE'
+                    if opname not in ('BUILD_SLICE_2', 'BUILD_SLICE_3'):
+                        customize[opname] = oparg
             elif opname == 'JUMP_ABSOLUTE':
                 target = self.__get_target(code, offset)
                 if target < offset:
@@ -260,7 +252,7 @@ class Scanner:
         if op is None:
             op = ord(code[pos])
         target = ord(code[pos+1]) + ord(code[pos+2]) * 256
-        if op in self.dis.hasjrel:
+        if op in dis.hasjrel:
             target += pos + 3
         return target
 
@@ -276,9 +268,9 @@ class Scanner:
         Return index to it or None if not found.
         """
 
-        assert(start>=0 and end<len(code))
+        assert(start>=0 and end<=len(code))
 
-        HAVE_ARGUMENT = self.dis.HAVE_ARGUMENT
+        HAVE_ARGUMENT = dis.HAVE_ARGUMENT
 
         try:    instr[0]
         except: instr = [instr]
@@ -317,10 +309,10 @@ class Scanner:
         Return index to it or None if not found.
         """
 
-        if not (start>=0 and end<len(code)):
+        if not (start>=0 and end<=len(code)):
             return None
 
-        HAVE_ARGUMENT = self.dis.HAVE_ARGUMENT
+        HAVE_ARGUMENT = dis.HAVE_ARGUMENT
 
         try:    instr[0]
         except: instr = [instr]
@@ -359,9 +351,9 @@ class Scanner:
         Return a list with indexes to them or [] if none found.
         """
 
-        assert(start>=0 and end<len(code))
+        assert(start>=0 and end<=len(code))
 
-        HAVE_ARGUMENT = self.dis.HAVE_ARGUMENT
+        HAVE_ARGUMENT = dis.HAVE_ARGUMENT
 
         try:    instr[0]
         except: instr = [instr]
@@ -386,14 +378,7 @@ class Scanner:
         Return the next jump that was generated by an except SomeException:
         construct in a try...except...else clause or None if not found.
         """
-        HAVE_ARGUMENT = self.dis.HAVE_ARGUMENT
-        JUMP_FORWARD  = self.dis.opmap['JUMP_FORWARD']
-        JUMP_ABSOLUTE = self.dis.opmap['JUMP_ABSOLUTE']
-        END_FINALLY   = self.dis.opmap['END_FINALLY']
-        POP_TOP       = self.dis.opmap['POP_TOP']
-        DUP_TOP       = self.dis.opmap['DUP_TOP']
-        try:    SET_LINENO = self.dis.opmap['SET_LINENO']
-        except: SET_LINENO = None
+        HAVE_ARGUMENT = dis.HAVE_ARGUMENT
 
         lookup = [JUMP_ABSOLUTE, JUMP_FORWARD]
         while start < end:
@@ -409,10 +394,7 @@ class Scanner:
             x = jmp+3
             while x <= end and pos < 4:
                 op = ord(code[x])
-                if op == SET_LINENO:
-                    x += 3
-                    continue
-                elif op >= HAVE_ARGUMENT:
+                if op >= HAVE_ARGUMENT:
                     break
                 ops[pos] = op
                 opp[pos] = x
@@ -427,55 +409,11 @@ class Scanner:
             start = jmp + 3
         return None
 
-    def __list_comprehension(self, code, pos, op=None):
-        """
-        Determine if there is a list comprehension structure starting at pos
-        """
-        BUILD_LIST = self.dis.opmap['BUILD_LIST']
-        DUP_TOP    = self.dis.opmap['DUP_TOP']
-        LOAD_ATTR  = self.dis.opmap['LOAD_ATTR']
-        if op is None:
-            op = ord(code[pos])
-        if op != BUILD_LIST:
-            return 0
-        try:
-            elems = ord(code[pos+1]) + ord(code[pos+2])*256
-            codes = (op, elems, ord(code[pos+3]), ord(code[pos+4]))
-        except IndexError:
-            return 0
-        return (codes==(BUILD_LIST, 0, DUP_TOP, LOAD_ATTR))
-
-    def __ignore_if(self, code, pos):
-        """
-        Return true if this 'if' is to be ignored.
-        """
-        POP_TOP      = self.dis.opmap['POP_TOP']
-        COMPARE_OP   = self.dis.opmap['COMPARE_OP']
-        EXCEPT_MATCH = self.dis.copmap['exception match']
-
-        ## If that was added by a while loop
-        if pos in self.__ignored_ifs:
-            return 1
-
-        # Check if we can test only for POP_TOP for this -Dan
-        # Maybe need to be done as above (skip SET_LINENO's)
-        if (ord(code[pos-3])==COMPARE_OP and
-            (ord(code[pos-2]) + ord(code[pos-1])*256)==EXCEPT_MATCH and
-            ord(code[pos+3])==POP_TOP and
-            ord(code[pos+4])==POP_TOP and
-            ord(code[pos+5])==POP_TOP and
-            ord(code[pos+6])==POP_TOP):
-            return 1 ## Exception match
-        return 0
-
     def __fix_parent(self, code, target, parent):
         """Fix parent boundaries if needed"""
-        JUMP_ABSOLUTE = self.dis.opmap['JUMP_ABSOLUTE']
         start = parent['start']
         end = parent['end']
-        ## Map the second start point for 'while 1:' in python 2.3+ to start
-        try:    target = self.__while1[target]
-        except: pass
+
         if target >= start or end-start < 3 or target not in self.__loops:
             return
         if ord(code[end-3])==JUMP_ABSOLUTE:
@@ -498,25 +436,6 @@ class Scanner:
 
         # TODO: check the struct boundaries more precisely -Dan
 
-        SETUP_LOOP    = self.dis.opmap['SETUP_LOOP']
-        BUILD_LIST    = self.dis.opmap['BUILD_LIST']
-        FOR_ITER      = self.dis.opmap['FOR_ITER']
-        GET_ITER      = self.dis.opmap['GET_ITER']
-        SETUP_EXCEPT  = self.dis.opmap['SETUP_EXCEPT']
-        JUMP_FORWARD  = self.dis.opmap['JUMP_FORWARD']
-        JUMP_ABSOLUTE = self.dis.opmap['JUMP_ABSOLUTE']
-        POP_JUMP_IF_FALSE = self.dis.opmap['POP_JUMP_IF_FALSE']
-        POP_JUMP_IF_TRUE  = self.dis.opmap['POP_JUMP_IF_TRUE']
-        JUMP_IF_FALSE_OR_POP = self.dis.opmap['JUMP_IF_FALSE_OR_POP']
-        JUMP_IF_TRUE_OR_POP = self.dis.opmap['JUMP_IF_TRUE_OR_POP']
-        END_FINALLY   = self.dis.opmap['END_FINALLY']
-        POP_TOP       = self.dis.opmap['POP_TOP']
-        POP_BLOCK       = self.dis.opmap['POP_BLOCK']
-        RETURN_VALUE = self.dis.opmap['RETURN_VALUE']
-        CONTINUE_LOOP = self.dis.opmap['CONTINUE_LOOP']
-        LOAD_ATTR = self.dis.opmap['LOAD_ATTR']
-        LOAD_FAST = self.dis.opmap['LOAD_FAST']
-        RAISE_VARARGS = self.dis.opmap['RAISE_VARARGS']
         # Ev remove this test and make op a mandatory argument -Dan
         if op is None:
             op = ord(code[pos])
@@ -538,11 +457,6 @@ class Scanner:
 
         if op == SETUP_LOOP:
             start = pos+3
-#            if ord(code[start])==JUMP_FORWARD:
-                ## This is a while 1 (has a particular structure)
-#                start = self.__get_target(code, start, JUMP_FORWARD)
-#                start = self.__restrict_to_parent(start, parent)
-#                self.__while1[pos+3] = start ## map between the 2 start points
             target = self.__get_target(code, pos, op)
             end    = self.__restrict_to_parent(target, parent)
             if target != end:
@@ -577,7 +491,6 @@ class Scanner:
                 (line_no, next_line_byte) = self.lines[pos]
                 test = self.prev[next_line_byte]
                 assert(test is not None)
-                self.__ignored_ifs.append(test)
                 test_target = self.__get_target(code, test)
                 if test_target > (jump_back+3):
                     jump_back = test_target
@@ -589,21 +502,6 @@ class Scanner:
             self.__structs.append({'type': loop_type + '-else',
                                    'start': jump_back+3,
                                    'end':   end})
-        elif self.__list_comprehension(code, pos, op):
-            get_iter = self.__first_instr(code, pos+7, end, GET_ITER)
-            for_iter = self.__first_instr(code, get_iter, end, FOR_ITER)
-            assert(get_iter is not None and for_iter is not None)
-            start  = get_iter+1
-            target = self.__get_target(code, for_iter, FOR_ITER)
-            end    = self.__restrict_to_parent(target, parent)
-            jump_back = self.__last_instr(code, start, end, JUMP_ABSOLUTE,
-                                          start, False)
-            assert(jump_back is not None)
-            target = self.__get_target(code, jump_back, JUMP_ABSOLUTE)
-            start = self.__restrict_to_parent(target, parent)
-            self.__structs.append({'type': 'list-comprehension',
-                                   'start': start,
-                                   'end':   jump_back})
         elif op == SETUP_EXCEPT:
             start  = pos+3
             target = self.__get_target(code, pos, op)
@@ -649,10 +547,8 @@ class Scanner:
        #         if target != end:
        #             self.__fixed_jumps[jmp] = end
                 i = jmp+3
-        elif op in (POP_JUMP_IF_FALSE, POP_JUMP_IF_TRUE):
 
-#            if self.__ignore_if(code, pos):
-#                return
+        elif op in (POP_JUMP_IF_FALSE, POP_JUMP_IF_TRUE):
             start = pos+3 
             target = self.__get_target(code, pos, op)
             rtarget = self.__restrict_to_parent(target, parent)
@@ -671,8 +567,6 @@ class Scanner:
             if (ord(code[self.prev[target]]) in (JUMP_IF_FALSE_OR_POP, JUMP_IF_TRUE_OR_POP,
                     POP_JUMP_IF_FALSE, POP_JUMP_IF_TRUE)) and (target > pos):  
                 self.__fixed_jumps[pos] = self.prev[target]
-                if op == POP_JUMP_IF_TRUE:
-                    self.pjit_tgt[self.prev[target]] = True
                 return
                 
             #is this not at the end of a line
@@ -690,7 +584,7 @@ class Scanner:
                             good_op = True
                     else:
                         if start < target < next_line_byte:
-                            if ord(code[self.prev[target]]) in (JUMP_ABSOLUTE, JUMP_FORWARD):
+                            if ord(code[self.prev[target]]) in (JUMP_ABSOLUTE, JUMP_FORWARD, RETURN_VALUE):
                                 good_op = True
                         while p_op in (JUMP_ABSOLUTE, JUMP_FORWARD, POP_BLOCK):
                             if p_op in (JUMP_ABSOLUTE, JUMP_FORWARD):
@@ -749,12 +643,12 @@ class Scanner:
                              or ((ord(code[self.lines[j][1]-3]) == POP_JUMP_IF_TRUE)
                                  and (ord(code[self.__get_target(code, self.lines[j][1]-3)-3]) == POP_JUMP_IF_FALSE)
                                  and (self.__get_target(code, self.__get_target(code, self.lines[j][1]-3)-3) == target))))
-                       or (ord(code[self.prev[self.lines[j][1]]]) in (LOAD_ATTR, LOAD_FAST))):
+                       or (ord(code[self.prev[self.lines[j][1]]]) in (LOAD_ATTR, LOAD_FAST, JUMP_IF_FALSE_OR_POP, JUMP_IF_TRUE_OR_POP))):
                     if (self.if_lines.get(i, False) and (self.__get_target(code, self.lines[j][1]-3) == target)):
                         num_pj += 1
                     j = self.lines[j][1]
                     i = self.lines[j][0]
-                    if (ord(code[self.prev[j]]) not in (LOAD_ATTR, LOAD_FAST)):
+                    if (ord(code[self.prev[j]]) not in (LOAD_ATTR, LOAD_FAST, JUMP_IF_FALSE_OR_POP, JUMP_IF_TRUE_OR_POP)):
                         k = j
                 if k > next_line_byte:
                     if num_pj > 1 and target > pos:
@@ -844,7 +738,12 @@ class Scanner:
                 self.__structs.append({'type':  'if-then',
                                        'start': start,
                                        'end':   rtarget})
-                
+        elif op in (JUMP_IF_FALSE_OR_POP, JUMP_IF_TRUE_OR_POP):
+            target = self.__get_target(code, pos, op)
+            if target > pos:
+                unop_target = self.__last_instr(code, pos, target, JUMP_FORWARD, target)
+                if unop_target and ord(code[unop_target+3]) != ROT_TWO:
+                    self.__fixed_jumps[pos] = unop_target
                 
                 
              
@@ -858,10 +757,10 @@ class Scanner:
         This procedure is modelled after dis.findlables(), but here
         for each target the number of jumps are counted.
         """
-        HAVE_ARGUMENT = self.dis.HAVE_ARGUMENT
+        HAVE_ARGUMENT = dis.HAVE_ARGUMENT
 
-        hasjrel = self.dis.hasjrel
-        hasjabs = self.dis.hasjabs
+        hasjrel = dis.hasjrel
+        hasjabs = dis.hasjabs
 
         needFixing = (self.__pyversion >= 2.3)
 
@@ -870,19 +769,8 @@ class Scanner:
                            'start': 0,
                            'end':   n-1}]
         self.__loops = []  ## All loop entry points
-        self.__while1 = {} ## 'while 1:' in python 2.3+ has another start point
         self.__fixed_jumps = {} ## Map fixed jumps to their real destination
-        self.__ignored_ifs = [] ## JUMP_IF_XXXX's we should ignore
-#        self.__end_if_line = {}
         self.__jump_back_else = {}
-        self.pjit_tgt = {}
-        POP_JUMP_IF_FALSE = self.dis.opmap['POP_JUMP_IF_FALSE']
-        POP_JUMP_IF_TRUE  = self.dis.opmap['POP_JUMP_IF_TRUE']
-        JUMP_IF_FALSE_OR_POP = self.dis.opmap['JUMP_IF_FALSE_OR_POP']
-        JUMP_IF_TRUE_OR_POP  = self.dis.opmap['JUMP_IF_TRUE_OR_POP']
-        JUMP_ABSOLUTE = self.dis.opmap['JUMP_ABSOLUTE']
-        JUMP_FORWARD = self.dis.opmap['JUMP_FORWARD']
-        lastif = self.__last_instr(code, 0, n-1, [POP_JUMP_IF_FALSE, POP_JUMP_IF_TRUE], n-4)
 
         targets = {}
         i = 0
@@ -899,7 +787,7 @@ class Scanner:
                     
                 
                 if label is None:
-                    if op in hasjrel:
+                    if op in hasjrel and op != FOR_ITER:
                         label = i + 3 + oparg
                     elif op in hasjabs:
                         if op in [JUMP_IF_FALSE_OR_POP, JUMP_IF_TRUE_OR_POP]:
