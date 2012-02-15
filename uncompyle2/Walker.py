@@ -539,7 +539,9 @@ class Walker(GenericASTTraversal, object):
         calculate_indent = sys.maxint
         for line in lines[1:]:
             stripped = line.lstrip()
-            calculate_indent = min(calculate_indent, len(line) - len(stripped))
+            if len(stripped) > 0:
+                calculate_indent = min(calculate_indent, len(line) - len(stripped))
+        calculate_indent = min(calculate_indent, len(lines[-1]) - len(lines[-1].lstrip()))
         # Remove indentation (first line is special):
         trimmed = [lines[0]]
         if calculate_indent < sys.maxint:

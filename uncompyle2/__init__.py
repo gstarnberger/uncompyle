@@ -71,7 +71,7 @@ def _load_module(filename):
     except KeyError:
         raise ImportError, "Unknown magic number %s in %s" % (ord(magic[0])+256*ord(magic[1]), filename)
     if version != '2.7':
-        raise ImportError, "This is a Python %s file! Only Python 2.7 files are supported."
+        raise ImportError, "This is a Python %s file! Only Python 2.7 files are supported." % version
     #print version
     fp.read(4) # timestamp
     co = marshal.load(fp)
@@ -86,7 +86,8 @@ def uncompyle(version, co, out=None, showasm=0, showast=0):
 
     # store final output stream for case of error
     __real_out = out or sys.stdout
-
+    if co.co_filename:
+        print >>__real_out, '#Embedded file name: %s' % co.co_filename
     scanner = Scanner.getscanner(version)
     scanner.setShowAsm(showasm, out)
     tokens, customize = scanner.disassemble(co)
