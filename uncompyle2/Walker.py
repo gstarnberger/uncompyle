@@ -267,6 +267,8 @@ TABLE_DIRECT = {
         '%|for %c in %c:\n%+%c%-%|else:\n%+%c%-\n', 3, 1, 4, -2),
     'forelselaststmt':	(
         '%|for %c in %c:\n%+%c%-%|else:\n%+%c%-', 3, 1, 4, -2),
+    'forelselaststmtl':	(
+        '%|for %c in %c:\n%+%c%-%|else:\n%+%c%-', 3, 1, 4, -2),
     'trystmt':		( '%|try:\n%+%c%-%c', 1, 5 ),
     'c_trystmt':		( '%|try:\n%+%c%-%c', 1, 5 ),
     'tf_trystmt':		( '%c%-%c%+', 1, 5 ),

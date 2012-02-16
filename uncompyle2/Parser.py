@@ -299,7 +299,8 @@ class Parser(GenericASTBuilder):
         lastl_stmt ::= iflaststmtl
         lastl_stmt ::= ifelsestmtl
         lastl_stmt ::= c_trystmt
-
+        lastl_stmt ::= forelselaststmtl
+        
         l_stmts_opt ::= l_stmts
         l_stmts_opt ::= passstmt
 
@@ -416,6 +417,7 @@ class Parser(GenericASTBuilder):
         
         iflaststmtl ::= testexpr l_stmts_opt JUMP_ABSOLUTE
         iflaststmtl ::= testexpr l_stmts_opt JUMP_BACK
+        iflaststmtl ::= testexpr l_stmts_opt JUMP_BACK JUMP_BACK_ELSE
 
         ifelsestmt ::= testexpr c_stmts_opt JUMP_FORWARD c_stmts COME_FROM
         ifelsestmt ::= testexpr c_stmts_opt JUMP_FORWARD return_stmts COME_FROM
@@ -585,26 +587,20 @@ class Parser(GenericASTBuilder):
         _for ::= GET_ITER FOR_ITER
         _for ::= LOAD_CONST FOR_LOOP
 
+        for_block ::= l_stmts_opt _jump_back
+        for_block ::= return_stmts _come_from
+        
         forstmt ::= SETUP_LOOP expr _for designator
-                l_stmts_opt _jump_back
-                POP_BLOCK COME_FROM
-        forstmt ::= SETUP_LOOP expr _for designator
-                return_stmts 
-                POP_BLOCK COME_FROM
+                for_block POP_BLOCK COME_FROM
 
         forelsestmt ::= SETUP_LOOP expr _for designator
-                l_stmts_opt _jump_back
-                POP_BLOCK stmts COME_FROM
-        forelsestmt ::= SETUP_LOOP expr _for designator
-                return_stmts _come_from
-                POP_BLOCK stmts COME_FROM
+                for_block POP_BLOCK stmts COME_FROM
 
         forelselaststmt ::= SETUP_LOOP expr _for designator
-                l_stmts_opt _jump_back
-                POP_BLOCK c_stmts COME_FROM
-        forelselaststmt ::= SETUP_LOOP expr _for designator
-                return_stmts _come_from
-                POP_BLOCK c_stmts COME_FROM
+                for_block POP_BLOCK c_stmts COME_FROM
+
+        forelselaststmtl ::= SETUP_LOOP expr _for designator
+                for_block POP_BLOCK l_stmts COME_FROM
 
         return_stmts ::= return_stmt
         return_stmts ::= _stmts return_stmt

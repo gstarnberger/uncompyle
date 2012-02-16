@@ -678,13 +678,10 @@ class Scanner:
 
             # is this an if-else at end of a loop?
             # if so, indicate with special opcode to help parser
-            prev_target = pre[target]
-            prev_target_op = code[prev_target]
-            target_op = code[target]
             if target == rtarget:
-                if prev_target_op == JA and target_op != POP_BLOCK:
-                    if self.get_target(prev_target) < pos:
-                        self.jump_back_else[prev_target] = True
+                if code[pre[target]] == JA and code[target] != POP_BLOCK:
+                    if self.get_target(pre[target]) < pos:
+                        self.jump_back_else[pre[target]] = True
             
             # is this an if and
             if op == PJIF:
