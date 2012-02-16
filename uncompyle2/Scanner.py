@@ -467,7 +467,7 @@ class Scanner:
                 if code[j] == FOR_ITER:
                     stmts.remove(s)
                     continue
-            last_stmt_line = self.lines[s].l_no
+            last_stmt = s
             slist += [s] * (s-i)
             i = s
         slist += [len(code)] * (len(code)-len(slist))
@@ -732,6 +732,9 @@ class Scanner:
                       and self.get_target(target) == self.get_target(next):
                     self.fixed_jumps[pos] = pre[next]
                     return
+            
+            if code[pre[rtarget]] == JA and pre[rtarget] in self.stmts and pre[rtarget] != pos:
+                rtarget = pre[rtarget]
                         
             #does the if jump just beyond a jump op, then this is probably an if statement
             if code[pre[rtarget]] in (JA, JF):
