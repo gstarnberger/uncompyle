@@ -286,7 +286,6 @@ class Parser(GenericASTBuilder):
         lastc_stmt ::= whileelselaststmt
         lastc_stmt ::= forelselaststmt
         lastc_stmt ::= ifelsestmtr
-        lastc_stmt ::= c_trystmt
 
         c_stmts_opt ::= c_stmts
         c_stmts_opt ::= passstmt
@@ -298,7 +297,6 @@ class Parser(GenericASTBuilder):
         
         lastl_stmt ::= iflaststmtl
         lastl_stmt ::= ifelsestmtl
-        lastl_stmt ::= c_trystmt
         lastl_stmt ::= forelselaststmtl
         
         l_stmts_opt ::= l_stmts
@@ -354,6 +352,7 @@ class Parser(GenericASTBuilder):
         stmt ::= forstmt
         stmt ::= forelsestmt
         stmt ::= trystmt
+        stmt ::= tryelsestmt
         stmt ::= tryfinallystmt
         stmt ::= withstmt
         stmt ::= withasstmt
@@ -430,116 +429,45 @@ class Parser(GenericASTBuilder):
         _jump_back_jump_back_else ::= JUMP_BACK JUMP_BACK_ELSE
         
         
-        trystmt ::= SETUP_EXCEPT stmts_opt
-                POP_BLOCK JUMP_FORWARD
-                COME_FROM except_stmts
+        trystmt ::= SETUP_EXCEPT stmts_opt POP_BLOCK
+                JUMP_FORWARD COME_FROM except_stmts
+                END_FINALLY COME_FROM COME_FROM
 
-        trystmt ::= SETUP_EXCEPT stmts_opt
-                POP_BLOCK 
-                COME_FROM JUMP_FORWARD except_stmts
+        trystmt ::= SETUP_EXCEPT stmts_opt POP_BLOCK
+                jmp_abs COME_FROM except_stmts
+                END_FINALLY COME_FROM
 
-        except_stmts ::= except_cond1 except_sub_stmts 
-        except_stmts ::= except_cond2 except_sub_stmts 
-        except_stmts ::= except JUMP_FORWARD try_end COME_FROM
-        except_stmts ::= except2 END_FINALLY COME_FROM
-        except_stmts ::= END_FINALLY COME_FROM
+        tryelsestmt ::= SETUP_EXCEPT stmts_opt POP_BLOCK
+                JUMP_FORWARD COME_FROM except_stmts
+                END_FINALLY COME_FROM try_else_suite COME_FROM
 
-        except_stmts_a ::= except_cond1 except_sub_stmts_a 
-        except_stmts_a ::= except_cond2 except_sub_stmts_a 
-        except_stmts_a ::= except JUMP_FORWARD try_end COME_FROM
-        except_stmts_a ::= except2 try_end
-        except_stmts_a ::= try_end
+        tryelsestmt ::= SETUP_EXCEPT stmts_opt POP_BLOCK
+                jmp_abs COME_FROM except_stmts
+                END_FINALLY try_else_suite COME_FROM
 
-        except_sub_stmts ::= c_stmts_opt JUMP_FORWARD except_stmts_a COME_FROM
-        except_sub_stmts ::= return_stmts except_stmts
-        except_sub_stmts ::= continue_stmts jmp_back except_stmts
+        except_stmts ::= except_stmts except_stmt
+        except_stmts ::= except_stmt
         
-        except_sub_stmts_a ::= c_stmts_opt JUMP_FORWARD except_stmts_a COME_FROM
-        except_sub_stmts_a ::= return_stmts except_stmts_a
-        except_sub_stmts_a ::= continue_stmts jmp_back except_stmts_a
-        
-        jmp_back ::= JUMP_BACK
-        jmp_back ::= JUMP_BACK JUMP_BACK_ELSE
-        continue_stmts ::= continue_stmt
-        continue_stmts ::=_stmts continue_stmt
-        
-        try_end  ::= END_FINALLY COME_FROM
-        try_end  ::= except_else
-        except_else ::= END_FINALLY COME_FROM stmts
+        except_stmt ::= except_cond1 except_suite 
+        except_stmt ::= except_cond2 except_suite 
+        except_stmt ::= except
 
+        except_suite ::= c_stmts_opt JUMP_FORWARD
+        except_suite ::= c_stmts_opt jmp_abs
+        except_suite ::= return_stmts
+                      
         except_cond1 ::= DUP_TOP expr COMPARE_OP
-                POP_JUMP_IF_FALSE POP_TOP POP_TOP POP_TOP
-                
+                POP_JUMP_IF_FALSE POP_TOP POP_TOP POP_TOP                
 
         except_cond2 ::= DUP_TOP expr COMPARE_OP
                 POP_JUMP_IF_FALSE POP_TOP designator POP_TOP
                  
-        except  ::=  POP_TOP POP_TOP POP_TOP c_stmts_opt
-
-        except2  ::=  POP_TOP POP_TOP POP_TOP return_stmts
-
-
-        c_trystmt ::= SETUP_EXCEPT stmts_opt
-                POP_BLOCK JUMP_FORWARD
-                COME_FROM c_except_stmts
-
-        c_trystmt ::= SETUP_EXCEPT stmts_opt
-                POP_BLOCK
-                COME_FROM JUMP_FORWARD c_except_stmts
-
-        c_trystmt ::= SETUP_EXCEPT stmts_opt
-                POP_BLOCK jmp_abs
-                COME_FROM c_except_stmts2
-
-        c_trystmt ::= SETUP_EXCEPT stmts_opt
-                POP_BLOCK
-                COME_FROM jmp_abs c_except_stmts2
-
-        c_except_stmts ::= except_cond1 c_except_sub_stmts
-        c_except_stmts ::= except_cond2 c_except_sub_stmts
-        c_except_stmts ::= except jmp_abs try_end3
-        c_except_stmts ::= except2 END_FINALLY COME_FROM
-        c_except_stmts ::= END_FINALLY COME_FROM
-
-        c_except_stmts_a ::= except_cond1 c_except_sub_stmts_a
-        c_except_stmts_a ::= except_cond2 c_except_sub_stmts_a
-        c_except_stmts_a ::= except jmp_abs try_end3
-        c_except_stmts_a ::= except2 try_end3
-        c_except_stmts_a ::= try_end3
-
-        try_end3  ::= END_FINALLY COME_FROM
-        try_end3  ::= except_else3
-        except_else3 ::= END_FINALLY COME_FROM c_stmts
-        except_else3 ::= END_FINALLY COME_FROM l_stmts
-
-        c_except_sub_stmts ::= c_stmts_opt jmp_abs c_except_stmts_a
-        c_except_sub_stmts ::= return_stmts c_except_stmts
-
-        c_except_sub_stmts_a ::= c_stmts_opt jmp_abs c_except_stmts_a
-        c_except_sub_stmts_a ::= return_stmts c_except_stmts_a
-
-        c_except_stmts2 ::= except_cond1 c_except_sub_stmts2
-        c_except_stmts2 ::= except_cond2 c_except_sub_stmts2
-        c_except_stmts2 ::= except jmp_abs try_end2
-        c_except_stmts2 ::= except2 END_FINALLY
-        c_except_stmts2 ::= END_FINALLY
-
-        c_except_stmts2_a ::= except_cond1 c_except_sub_stmts2_a
-        c_except_stmts2_a ::= except_cond2 c_except_sub_stmts2_a
-        c_except_stmts2_a ::= except jmp_abs try_end2
-        c_except_stmts2_a ::= except2 try_end2
-        c_except_stmts2_a ::= try_end2
-
-        c_except_sub_stmts2 ::= c_stmts_opt jmp_abs c_except_stmts2_a
-        c_except_sub_stmts2 ::= return_stmts c_except_stmts2
-
-        c_except_sub_stmts2_a ::= c_stmts_opt jmp_abs c_except_stmts2_a
-        c_except_sub_stmts2_a ::= return_stmts c_except_stmts2_a
-
-        try_end2  ::= END_FINALLY
-        try_end2  ::= except_else2
-        except_else2 ::= END_FINALLY c_stmts
-        except_else2 ::= END_FINALLY l_stmts
+        except  ::=  POP_TOP POP_TOP POP_TOP c_stmts_opt JUMP_FORWARD
+        except  ::=  POP_TOP POP_TOP POP_TOP c_stmts_opt jmp_abs
+        except  ::=  POP_TOP POP_TOP POP_TOP return_stmts
+        
+        try_else_suite ::= c_stmts
+        try_else_suite ::= l_stmts
 
         jmp_abs ::= JUMP_ABSOLUTE
         jmp_abs ::= JUMP_BACK

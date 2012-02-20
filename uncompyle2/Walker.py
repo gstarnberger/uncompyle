@@ -270,22 +270,13 @@ TABLE_DIRECT = {
     'forelselaststmtl':	(
         '%|for %c in %c:\n%+%c%-%|else:\n%+%c%-', 3, 1, 4, -2),
     'trystmt':		( '%|try:\n%+%c%-%c', 1, 5 ),
-    'c_trystmt':		( '%|try:\n%+%c%-%c', 1, 5 ),
+    'tryelsestmt':		( '%|try:\n%+%c%-%c%|else:\n%+%c%-', 1, 5, -2 ),
     'tf_trystmt':		( '%c%-%c%+', 1, 5 ),
+    'tf_tryelsestmt':		( '%c%-%c%|else:\n%+%c', 1, 5, -2 ),
     'except':		( '%|except:\n%+%c%-', 3 ),
-    'except2':		( '%|except:\n%+%c%-', 3 ),
     'except_cond1':	( '%|except %c:\n', 1 ),
     'except_cond2':	( '%|except %c as %c:\n', 1, 5 ),
-    'except_sub_stmts':     ( '%+%c%-%C', 0, (1, sys.maxint, '') ),
-    'except_sub_stmts_a':     ( '%+%c%-%C', 0, (1, sys.maxint, '') ),
-    'c_except_sub_stmts':   ( '%+%c%-%C', 0, (1, sys.maxint, '') ),
-    'c_except_sub_stmts2':  ( '%+%c%-%C', 0, (1, sys.maxint, '') ),
-    'c_except_sub_stmts_a':   ( '%+%c%-%C', 0, (1, sys.maxint, '') ),
-    'c_except_sub_stmts2_a':  ( '%+%c%-%C', 0, (1, sys.maxint, '') ),
-    'except_cond_cont': ( '%c%+%|continue\n%-', 0),
-    'except_else':	( '%|else:\n%+%c%-', 2 ),
-    'except_else2':	( '%|else:\n%+%c%-', 1 ),
-    'except_else3':	( '%|else:\n%+%c%-', 2 ),
+    'except_suite':     ( '%+%c%-%C', 0, (1, sys.maxint, '') ),
     'tryfinallystmt':	( '%|try:\n%+%c%-%|finally:\n%+%c%-', 1, 5 ),
     'withstmt':     ( '%|with %c:\n%+%c%-', 0, 3),
     'withasstmt':   ( '%|with %c as %c:\n%+%c%-', 0, 2, 3),
@@ -666,12 +657,11 @@ class Walker(GenericASTTraversal, object):
         
 #    'tryfinallystmt':	( '%|try:\n%+%c%-%|finally:\n%+%c%-', 1, 5 ),
     def n_tryfinallystmt(self, node):
-        if node[1] == 'stmts' and \
-           len(node[1]) == 1 and \
-           node[1][0] == 'sstmt' and \
-           node[1][0][0] == 'stmt' and \
-           node[1][0][0][0] == 'trystmt' or node[1][0][0] == 'c_trystmt':
-            node[1][0][0][0].type = 'tf_trystmt'
+        if len(node[1]) == 1 and node[1][0] == 'sstmt' and node[1][0][0] == 'stmt':
+            if node[1][0][0][0] == 'trystmt':
+                node[1][0][0][0].type = 'tf_trystmt'
+            if node[1][0][0][0] == 'tryelsestmt':
+                node[1][0][0][0].type = 'tf_tryelsestmt'
         self.default(node)
         
     def n_exec_stmt(self, node):

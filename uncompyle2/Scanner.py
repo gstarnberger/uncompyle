@@ -11,6 +11,7 @@ import types
 import dis
 from collections import namedtuple
 from array import array
+from operator import itemgetter
 
 globals().update({k.replace('+','_'):v for (k,v) in dis.opmap.items()})
 
@@ -101,18 +102,13 @@ class Scanner:
         self.code = code = array('B', co.co_code)
         n = len(code)
         self.prev = [0]
-        i=0
-        while i < n:
+        for i in self.op_range(0, n):
             c = code[i]
             op = code[i]
+            self.prev.append(i)
             if op >= dis.HAVE_ARGUMENT:
                 self.prev.append(i)
                 self.prev.append(i)
-                self.prev.append(i)
-                i = i + 3
-            else:
-                self.prev.append(i)
-                i = i + 1
                 
         self.lines = []
         linetuple = namedtuple('linetuple', ['l_no', 'next'])
@@ -153,27 +149,25 @@ class Scanner:
             names = co.co_names
             varnames = co.co_varnames
 
-        i = 0
         extended_arg = 0
-        while i < n:
-            offset = i
-            k = 0
-            if cf.has_key(offset):
+        for offset in self.op_range(0, n):
+            
+            if offset in cf:
+                k = 0
                 for j in cf[offset]:
                     rv.append(Token('COME_FROM', None, repr(j),
                                     offset="%s_%d" % (offset, k) ))
                     k += 1
                     
-            op = code[i]
+            op = code[offset]
             opname = dis.opname[op]
-            i += 1
             oparg = None; pattr = None
             if op >= dis.HAVE_ARGUMENT:
-                oparg = code[i] + code[i+1] * 256 + extended_arg
+                oparg = code[offset+1] + code[offset+2] * 256 + extended_arg
                 extended_arg = 0
-                i += 2
                 if op == dis.EXTENDED_ARG:
                     extended_arg = oparg * 65536L
+                    continue
                 if op in dis.hasconst:
                     const = co.co_consts[oparg]
                     if type(const) == types.CodeType:
@@ -198,7 +192,7 @@ class Scanner:
                 elif op in dis.hasname:
                     pattr = names[oparg]
                 elif op in dis.hasjrel:
-                    pattr = repr(i + oparg)
+                    pattr = repr(offset + 3 + oparg)
                 elif op in dis.hasjabs:
                     pattr = repr(oparg)
                 elif op in dis.haslocal:
@@ -242,7 +236,7 @@ class Scanner:
 
             rv.append(Token(opname, oparg, pattr, offset, linestart = offset in linestartoffsets))
 
-            if self.jump_back_else.get(offset, False):
+            if offset in self.jump_back_else:
                 rv.append(Token('JUMP_BACK_ELSE', None, None, 
                     offset="%s_" % offset ))
             
@@ -283,8 +277,7 @@ class Scanner:
 
         pos = None
         distance = len(code)
-        i = start
-        while i < end:
+        for i in self.op_range(start, end):
             op = code[i]
             if op in instr:
                 if target is None:
@@ -297,10 +290,6 @@ class Scanner:
                     if _distance < distance:
                         distance = _distance
                         pos = i
-            if op < HAVE_ARGUMENT:
-                i += 1
-            else:
-                i += 3
         return pos
 
     def last_instr(self, start, end, instr, target=None, exact=True):
@@ -326,8 +315,7 @@ class Scanner:
 
         pos = None
         distance = len(code)
-        i = start
-        while i < end:
+        for i in self.op_range(start, end):
             op = code[i]
             if op in instr:
                 if target is None:
@@ -342,10 +330,6 @@ class Scanner:
                         if _distance <= distance:
                             distance = _distance
                             pos = i
-            if op < HAVE_ARGUMENT:
-                i += 1
-            else:
-                i += 3
         return pos
 
     def all_instr(self, start, end, instr, target=None, include_beyond_target=False):
@@ -367,8 +351,7 @@ class Scanner:
         except: instr = [instr]
 
         result = []
-        i = start
-        while i < end:
+        for i in self.op_range(start, end):
             op = code[i]
             if op in instr:
                 if target is None:
@@ -379,7 +362,6 @@ class Scanner:
                         result.append(i)
                     elif t == target:
                         result.append(i)
-            i += self.op_size(op)
         return result
 
     def op_size(self, op):
@@ -387,6 +369,11 @@ class Scanner:
             return 1
         else:
             return 3
+            
+    def op_range(self, start, end):
+        while start < end:
+            yield start
+            start += self.op_size(self.code[start])
 
     def build_stmt_indices(self):
         code = self.code
@@ -420,21 +407,18 @@ class Scanner:
                 
         pass_stmts = set()
         for seq in stmt_opcode_seqs:
-            i = start
-            while i+len(seq)-1 < end:
+            for i in self.op_range(start, end-(len(seq)+1)):
                 match = True
-                j = i
                 for elem in seq:
-                    if elem != code[j]:
+                    if elem != code[i]:
                         match = False
                         break
-                    j += self.op_size(code[j])
+                    i += self.op_size(code[i])
                     
                 if match:
-                    j = self.prev[j]
-                    stmts.add(j)
-                    pass_stmts.add(j)
-                i += self.op_size(code[i])
+                    i = self.prev[i]
+                    stmts.add(i)
+                    pass_stmts.add(i)
         
         if pass_stmts:
             stmt_list = list(stmts)
@@ -483,56 +467,32 @@ class Scanner:
         return filtered
 
     
-    def next_except_jump(self, start, end, target):
+    def next_except_jump(self, start):
         """
         Return the next jump that was generated by an except SomeException:
         construct in a try...except...else clause or None if not found.
         """
         HAVE_ARGUMENT = dis.HAVE_ARGUMENT
 
-        inner_try = self.first_instr(start, end, SETUP_EXCEPT, end, False)
-
-        lookup = [JA, JF]
-        while start < end:
-            jmp = self.first_instr(start, end, lookup, target)
-            if jmp is None:
-                return None
-            if jmp == self.prev[end]:
-                return jmp
-            after = jmp + 3
-            ops = [None, None, None, None]
-            opp = [0, 0, 0, 0]
-            pos = 0
-            x = jmp+3
-            while x <= end and pos < 4:
-                op = self.code[x]
-                if op >= HAVE_ARGUMENT:
-                    break
-                ops[pos] = op
-                opp[pos] = x
-                pos += 1
-                x += 1
-            if (ops[0] == END_FINALLY and opp[0] == end)\
-                  or (ops[0] == DUP_TOP)\
-                  or (ops[0] == ops[1] == ops[2] == POP_TOP):
-                inner_trys = self.all_instr(start, jmp, SETUP_EXCEPT)
-                inner_finallys = self.all_instr(start, jmp, END_FINALLY)
-                if len(inner_trys) == len(inner_finallys):
-                    return jmp
-            start = jmp + 3
-        return None
-
-    def fix_parent(self, target, parent):
-        """Fix parent boundaries if needed"""
-        start = parent['start']
-        end = parent['end']
-
-        if target >= start or end-start < 3 or target not in self.loops:
-            return
-        if self.code[self.prev[end]]==JA:
-            cont_target = self.get_target(end-3, JA)
-            if target == cont_target:
-                parent['end'] = end-3
+        except_match = self.first_instr(start, self.lines[start].next, POP_JUMP_IF_FALSE)
+        if except_match:
+            jmp = self.prev[self.get_target(except_match)]
+            if self.code[jmp] not in (JA, JF, RETURN_VALUE):
+                print '############################', jmp, dis.opname[self.code[jmp]]
+            return jmp
+            
+        count_END_FINALLY = 0
+        count_SETUP_ = 0
+        for i in self.op_range(start, len(self.code)):
+            op = self.code[i]
+            if op == END_FINALLY:
+                if count_END_FINALLY == count_SETUP_:
+                    assert self.code[self.prev[i]] in (JA, JF, RETURN_VALUE)
+                    return self.prev[i]
+                count_END_FINALLY += 1
+            elif op in (SETUP_EXCEPT, SETUP_WITH, SETUP_FINALLY):
+                count_SETUP_ += 1
+        
 
     def restrict_to_parent(self, target, parent):
         """Restrict pos to parent boundaries."""
@@ -628,39 +588,37 @@ class Scanner:
                                    'start': start,
                                    'end':   end-4})
             ## Now isolate the except and else blocks
-            start  = end
-            target = self.get_target(self.prev[start])
-            self.fix_parent(target, parent)
-            end    = self.restrict_to_parent(target, parent)
-            #if target != end:
-            #    self.fixed_jumps[self.prev[start]] = end
+            end_else = start_else = self.get_target(self.prev[end])
 
-            end_finally = self.last_instr(start, end, END_FINALLY)
-            if end_finally is None:
-                return
-            lookup = [JF]
-            jump_end = self.last_instr(start, end, lookup)
-            if jump_end:
-                target = self.get_target(jump_end)
-                end = self.restrict_to_parent(target, parent)
-            #    if target != end:
-            #        self.fixed_jumps[jump_end] = end
-           ## Add the try-else block
-            self.structs.append({'type':  'try-else',
-                                   'start': end_finally+1,
-                                   'end':   end})
             ## Add the except blocks
-            i = start
-            while i < end_finally:
-                jmp = self.next_except_jump(i, end_finally, target)
-                if jmp is None:
-                    break
-                self.structs.append({'type':  'except',
-                                       'start': i,
-                                       'end':   jmp})
-       #         if target != end:
-       #             self.fixed_jumps[jmp] = end
-                i = jmp+3
+            i = end
+            while self.code[i] != END_FINALLY:
+                jmp = self.next_except_jump(i)
+                if self.code[jmp] == RETURN_VALUE:
+                    self.structs.append({'type':  'except',
+                                           'start': i,
+                                           'end':   jmp+1})
+                    i = jmp + 1
+                else:
+                    if self.get_target(jmp) != start_else:
+                        end_else = self.get_target(jmp)
+                    if self.code[jmp] == JF:
+                        self.fixed_jumps[jmp] = -1
+                    self.structs.append({'type':  'except',
+                                   'start': i,
+                                   'end':   jmp})
+                    i = jmp + 3   
+            
+            ## Add the try-else block
+            if end_else != start_else:
+                r_end_else = self.restrict_to_parent(end_else, parent)
+                self.structs.append({'type':  'try-else',
+                                       'start': i+1,
+                                       'end':   r_end_else})
+                self.fixed_jumps[i] = r_end_else
+            else:
+                self.fixed_jumps[i] = i+1
+            
 
         elif op in (PJIF, PJIT):
             
@@ -681,7 +639,7 @@ class Scanner:
             if target == rtarget:
                 if code[pre[target]] == JA and code[target] != POP_BLOCK:
                     if self.get_target(pre[target]) < pos:
-                        self.jump_back_else[pre[target]] = True
+                        self.jump_back_else.add(pre[target])
             
             # is this an if and
             if op == PJIF:
@@ -790,12 +748,11 @@ class Scanner:
                            'end':   n-1}]
         self.loops = []  ## All loop entry points
         self.fixed_jumps = {} ## Map fixed jumps to their real destination
-        self.jump_back_else = {}
+        self.jump_back_else = set()
         self.build_stmt_indices()
 
         targets = {}
-        i = 0
-        while i < n:
+        for i in self.op_range(0, n):
             op = code[i]
 
             ## Determine structures and fix jumps for 2.3+
@@ -814,9 +771,11 @@ class Scanner:
                             if (oparg > i):
                                 label = oparg
                        
-                if label is not None:
+                if label is not None and label != -1:
                     targets[label] = targets.get(label, []) + [i]
-            i += self.op_size(op)
+            elif op == END_FINALLY and i in self.fixed_jumps:
+                label = self.fixed_jumps[i]
+                targets[label] = targets.get(label, []) + [i]
         return targets
 
 
