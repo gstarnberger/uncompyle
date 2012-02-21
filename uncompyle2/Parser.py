@@ -196,12 +196,18 @@ class Parser(GenericASTBuilder):
 
     def p_print(self, args):
         '''
-        stmt ::= print_stmt
-        stmt ::= print_stmt_nl
-        stmt ::= print_nl_stmt
-        print_stmt ::= expr PRINT_ITEM
-        print_nl_stmt ::= PRINT_NEWLINE
-        print_stmt_nl ::= print_stmt print_nl_stmt
+        stmt ::= print_items_stmt
+        stmt ::= print_nl
+        stmt ::= print_items_nl_stmt
+        
+        print_items_stmt ::= expr PRINT_ITEM print_items_opt
+        print_items_nl_stmt ::= expr PRINT_ITEM print_items_opt PRINT_NEWLINE_CONT
+        print_items_opt ::= print_items
+        print_items_opt ::= 
+        print_items ::= print_items print_item
+        print_items ::= print_item
+        print_item ::= expr PRINT_ITEM_CONT
+        print_nl ::= PRINT_NEWLINE
         '''
 
     def p_print_to(self, args):
@@ -241,6 +247,7 @@ class Parser(GenericASTBuilder):
         stmt ::= _25_importstmt
         stmt ::= _25_importfrom
         stmt ::= _25_importstar
+        stmt ::= importmultiple
 
         importstmt2 ::= LOAD_CONST import_as
         importstar2 ::= LOAD_CONST IMPORT_NAME IMPORT_STAR
@@ -257,6 +264,18 @@ class Parser(GenericASTBuilder):
         _25_importstmt ::= LOAD_CONST LOAD_CONST import_as 
         _25_importstar ::= LOAD_CONST LOAD_CONST IMPORT_NAME IMPORT_STAR 
         _25_importfrom ::= LOAD_CONST LOAD_CONST IMPORT_NAME importlist2 POP_TOP
+        _25_importstar ::= LOAD_CONST LOAD_CONST IMPORT_NAME_CONT IMPORT_STAR 
+        _25_importfrom ::= LOAD_CONST LOAD_CONST IMPORT_NAME_CONT importlist2 POP_TOP
+        importmultiple ::= LOAD_CONST LOAD_CONST import_as imports_cont
+        
+        imports_cont ::= imports_cont import_cont
+        imports_cont ::= import_cont
+        import_cont ::= LOAD_CONST LOAD_CONST import_as_cont
+        import_as_cont ::= IMPORT_NAME_CONT designator
+        import_as_cont ::= IMPORT_NAME_CONT LOAD_ATTR designator
+        import_as_cont ::= IMPORT_NAME_CONT LOAD_ATTR LOAD_ATTR designator
+        import_as_cont ::= IMPORT_NAME_CONT LOAD_ATTR LOAD_ATTR LOAD_ATTR designator
+        import_as_cont ::= IMPORT_FROM designator
         '''
 
     def p_grammar(self, args):
@@ -286,6 +305,7 @@ class Parser(GenericASTBuilder):
         lastc_stmt ::= whileelselaststmt
         lastc_stmt ::= forelselaststmt
         lastc_stmt ::= ifelsestmtr
+        lastc_stmt ::= ifelsestmtc
 
         c_stmts_opt ::= c_stmts
         c_stmts_opt ::= passstmt
@@ -418,10 +438,11 @@ class Parser(GenericASTBuilder):
         iflaststmtl ::= testexpr l_stmts_opt JUMP_BACK
         iflaststmtl ::= testexpr l_stmts_opt JUMP_BACK JUMP_BACK_ELSE
 
-        ifelsestmt ::= testexpr c_stmts_opt JUMP_FORWARD c_stmts COME_FROM
+        ifelsestmt ::= testexpr c_stmts_opt JUMP_FORWARD stmts COME_FROM
         ifelsestmt ::= testexpr c_stmts_opt JUMP_FORWARD return_stmts COME_FROM
-        ifelsestmt ::= testexpr c_stmts_opt JUMP_ABSOLUTE c_stmts
-        ifelsestmt ::= testexpr c_stmts_opt JUMP_ABSOLUTE return_stmts
+
+        ifelsestmtc ::= testexpr c_stmts_opt JUMP_ABSOLUTE c_stmts
+        ifelsestmtc ::= testexpr c_stmts_opt JUMP_ABSOLUTE return_stmts
         ifelsestmtr ::= testexpr return_stmts return_stmts
 
         ifelsestmtl ::= testexpr l_stmts_opt JUMP_ABSOLUTE l_stmts
@@ -669,7 +690,7 @@ class Parser(GenericASTBuilder):
         '''
 
     def nonterminal(self, nt, args):
-        collect = ('stmts', 'exprlist', 'kvlist', '_stmts')
+        collect = ('stmts', 'exprlist', 'kvlist', '_stmts', 'print_items')
 
         if nt in collect and len(args) > 1:
             #

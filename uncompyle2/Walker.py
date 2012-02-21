@@ -229,9 +229,10 @@ TABLE_DIRECT = {
     'assert2':		( '%|assert %c, %c\n' , 0, 3 ),
     'assert_expr_or': ( '%c or %c', 0, 2 ),
     'assert_expr_and':    ( '%c and %c', 0, 2 ),
-    'print_stmt':	( '%|print %c,\n', 0 ),
-    'print_stmt_nl':	( '%|print %[0]C\n', (0,1, None) ),
-    'print_nl_stmt':	( '%|print\n', ),
+    'print_items_stmt': ( '%|print %c%c,\n', 0, 2),
+    'print_items_nl_stmt': ( '%|print %c%c\n', 0, 2),
+    'print_item':  ( ', %c', 0),
+    'print_nl':	( '%|print\n', ),
     'print_to':		( '%|print >> %c, %c,\n', 0, 1 ),
     'print_to_nl':	( '%|print >> %c, %c\n', 0, 1 ),
     'print_nl_to':	( '%|print >> %c\n', 0 ),
@@ -251,6 +252,7 @@ TABLE_DIRECT = {
     'testtrue':     ( 'not %p', (0,22) ),
     
     'ifelsestmt':	( '%|if %c:\n%+%c%-%|else:\n%+%c%-', 0, 1, 3 ),
+    'ifelsestmtc':	( '%|if %c:\n%+%c%-%|else:\n%+%c%-', 0, 1, 3 ),
     'ifelsestmtl':	( '%|if %c:\n%+%c%-%|else:\n%+%c%-', 0, 1, 3 ),
     'ifelifstmt':	( '%|if %c:\n%+%c%-%c', 0, 1, 3 ),
     'elifelifstmt':	( '%|elif %c:\n%+%c%-%c', 0, 1, 3 ),
@@ -294,6 +296,8 @@ TABLE_DIRECT = {
     '_25_importstmt': ( '%|import %c\n', 2),
     '_25_importstar': ( '%|from %[2]{pattr} import *\n', ),
     '_25_importfrom': ( '%|from %[2]{pattr} import %c\n', 3 ),
+    'importmultiple': ( '%|import %c%c\n', 2, 3),
+    'import_cont'   : ( ', %c', 2),
     
     # CE - Fixes for tuples
     '_25_assign2':     ( '%|(%c, %c,) = (%c, %c)\n', 3, 4, 0, 1 ),
@@ -557,8 +561,9 @@ class Walker(GenericASTTraversal, object):
             self.preorder(node[0])
             self.prune()
         else:
-            self.write(self.indent, 'return ')
+            self.write(self.indent, 'return')
             if self.return_none or node != AST('return_stmt', [NONE, Token('RETURN_VALUE')]):
+                self.write(' ')
                 self.preorder(node[0])
             self.print_()
             self.prune() # stop recursing
@@ -682,17 +687,33 @@ class Walker(GenericASTTraversal, object):
     def n_ifelsestmt(self, node, preprocess=0):
         if len(node[3]) == 1 and not node[3][0] == 'continue_stmt':
             ifnode = node[3][0][0][0]
-            if node[3][0] == 'lastc_stmt' and node[3][0][0] == 'iflaststmt':
+            if node[3][0] == 'lastc_stmt' and node[3][0][0].type  == 'iflaststmt':
                 node.type = 'ifelifstmt'
                 node[3][0][0].type = 'elifstmt'
-            elif ifnode == 'ifelsestmt':
+            elif ifnode.type in ('ifelsestmt', 'ifelsestmtc'):
                 node.type = 'ifelifstmt'
                 self.n_ifelsestmt(ifnode, preprocess=1)
                 if ifnode == 'ifelifstmt':
                     ifnode.type = 'elifelifstmt'
-                elif ifnode == 'ifelsestmt':
+                elif ifnode.type in ('ifelsestmt', 'ifelsestmtc'):
                     ifnode.type = 'elifelsestmt'
             elif ifnode == 'ifstmt':
+                node.type = 'ifelifstmt'
+                ifnode.type = 'elifstmt'
+        if not preprocess:
+            self.default(node)
+            
+    def n_ifelsestmtc(self, node, preprocess=0):
+        if len(node[3]) == 1 and node[3][0] == 'lastc_stmt':
+            ifnode = node[3][0][0]
+            if ifnode == 'ifelsestmtc':
+                node.type = 'ifelifstmt'
+                self.n_ifelsestmtc(ifnode, preprocess=1)
+                if ifnode == 'ifelifstmt':
+                    ifnode.type = 'elifelifstmt'
+                elif ifnode == 'ifelsestmtc':
+                    ifnode.type = 'elifelsestmt'
+            elif ifnode == 'iflaststmt':
                 node.type = 'ifelifstmt'
                 ifnode.type = 'elifstmt'
         if not preprocess:
@@ -723,6 +744,8 @@ class Walker(GenericASTTraversal, object):
         else:
             self.write(iname, ' as ', sname)
         self.prune() # stop recursing
+    
+    n_import_as_cont = n_import_as
 
     def n_mkfunc(self, node):
         self.write(node[-2].attr.co_name) # = code.co_name
