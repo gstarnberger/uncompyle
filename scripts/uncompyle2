@@ -48,6 +48,10 @@ import os.path
 from uncompyle2 import main, verify
 import time
 
+if sys.version[:3] != '2.7':
+    print >>sys.stderr, 'Error:  uncompyle2 requires Python 2.7.'
+    sys.exit(-1)
+    
 showasm = showast = do_verify = numproc = recurse_dirs = 0
 outfile = '-'
 out_base = None

@@ -222,28 +222,9 @@ class Parser(GenericASTBuilder):
         print_to_items ::= print_to_item
         print_to_item ::= DUP_TOP expr ROT_TWO PRINT_ITEM_TO
         '''
-        # expr   print_to*   POP_TOP
-        # expr { print_to* } PRINT_NEWLINE_TO
-
-    def p_import15(self, args):
-        '''
-        stmt ::= importstmt
-        stmt ::= importfrom
-
-        importstmt ::= IMPORT_NAME STORE_FAST
-        importstmt ::= IMPORT_NAME STORE_NAME
-
-        importfrom ::= IMPORT_NAME importlist POP_TOP
-        importlist ::= importlist IMPORT_FROM
-        importlist ::= IMPORT_FROM
-        '''
 
     def p_import20(self, args):
-        '''
-        stmt ::= importstmt2
-        stmt ::= importfrom2
-        stmt ::= importstar2
-        
+        '''        
         stmt ::= _25_importstmt
         stmt ::= _25_importfrom
         stmt ::= _25_importstar
@@ -283,8 +264,8 @@ class Parser(GenericASTBuilder):
         stmts ::= stmts sstmt
         stmts ::= sstmt
         sstmt ::= stmt
-        sstmt ::= return_stmt
         sstmt ::= ifelsestmtr
+        sstmt ::= return_stmt
         sstmt ::= return_stmt RETURN_LAST
         
         stmts_opt ::= stmts
@@ -297,15 +278,14 @@ class Parser(GenericASTBuilder):
         c_stmts ::= _stmts
         c_stmts ::= _stmts lastc_stmt
         c_stmts ::= lastc_stmt
-        c_stmts ::= _stmts lastl_stmt continue_stmt
-        c_stmts ::= lastl_stmt continue_stmt
-        c_stmts ::= continue_stmt
+        c_stmts ::= continue_stmts
         
         lastc_stmt ::= iflaststmt
         lastc_stmt ::= whileelselaststmt
         lastc_stmt ::= forelselaststmt
         lastc_stmt ::= ifelsestmtr
         lastc_stmt ::= ifelsestmtc
+        lastc_stmt ::= tryelsestmtc
 
         c_stmts_opt ::= c_stmts
         c_stmts_opt ::= passstmt
@@ -318,9 +298,22 @@ class Parser(GenericASTBuilder):
         lastl_stmt ::= iflaststmtl
         lastl_stmt ::= ifelsestmtl
         lastl_stmt ::= forelselaststmtl
+        lastl_stmt ::= tryelsestmtl
         
         l_stmts_opt ::= l_stmts
         l_stmts_opt ::= passstmt
+        
+        suite_stmts ::= _stmts
+        suite_stmts ::= return_stmts
+        suite_stmts ::= continue_stmts
+        
+        suite_stmts_opt ::= suite_stmts
+        suite_stmts_opt ::= passstmt
+        
+        else_suite ::= suite_stmts
+        else_suitel ::= l_stmts
+        else_suitec ::= c_stmts
+        else_suitec ::= return_stmts
 
         designList ::= designator designator
         designList ::= designator DUP_TOP designList
@@ -350,6 +343,9 @@ class Parser(GenericASTBuilder):
         
         continue_stmt ::= JUMP_BACK
         continue_stmt ::= CONTINUE_LOOP
+        continue_stmts ::= _stmts lastl_stmt continue_stmt
+        continue_stmts ::= lastl_stmt continue_stmt
+        continue_stmts ::= continue_stmt
         
         stmt ::= raise_stmt
         raise_stmt ::= exprlist RAISE_VARARGS
@@ -438,34 +434,34 @@ class Parser(GenericASTBuilder):
         iflaststmtl ::= testexpr l_stmts_opt JUMP_BACK
         iflaststmtl ::= testexpr l_stmts_opt JUMP_BACK JUMP_BACK_ELSE
 
-        ifelsestmt ::= testexpr c_stmts_opt JUMP_FORWARD stmts COME_FROM
-        ifelsestmt ::= testexpr c_stmts_opt JUMP_FORWARD return_stmts COME_FROM
+        ifelsestmt ::= testexpr c_stmts_opt JUMP_FORWARD else_suite COME_FROM
 
-        ifelsestmtc ::= testexpr c_stmts_opt JUMP_ABSOLUTE c_stmts
-        ifelsestmtc ::= testexpr c_stmts_opt JUMP_ABSOLUTE return_stmts
+        ifelsestmtc ::= testexpr c_stmts_opt JUMP_ABSOLUTE else_suitec
+
         ifelsestmtr ::= testexpr return_stmts return_stmts
 
-        ifelsestmtl ::= testexpr l_stmts_opt JUMP_ABSOLUTE l_stmts
-        ifelsestmtl ::= testexpr l_stmts_opt _jump_back_jump_back_else l_stmts
+        ifelsestmtl ::= testexpr l_stmts_opt JUMP_ABSOLUTE else_suitel
+        ifelsestmtl ::= testexpr l_stmts_opt _jump_back_jump_back_else else_suitel
         _jump_back_jump_back_else ::= JUMP_BACK JUMP_BACK_ELSE
         
         
-        trystmt ::= SETUP_EXCEPT stmts_opt POP_BLOCK
-                JUMP_FORWARD COME_FROM except_stmts
-                END_FINALLY COME_FROM COME_FROM
+        trystmt ::= SETUP_EXCEPT suite_stmts_opt POP_BLOCK
+                try_middle COME_FROM
 
-        trystmt ::= SETUP_EXCEPT stmts_opt POP_BLOCK
-                jmp_abs COME_FROM except_stmts
+        tryelsestmt ::= SETUP_EXCEPT suite_stmts_opt POP_BLOCK
+                try_middle else_suite COME_FROM
+
+        tryelsestmtc ::= SETUP_EXCEPT suite_stmts_opt POP_BLOCK
+                try_middle else_suitec COME_FROM
+
+        tryelsestmtl ::= SETUP_EXCEPT suite_stmts_opt POP_BLOCK
+                try_middle else_suitel COME_FROM
+
+        try_middle ::= jmp_abs COME_FROM except_stmts
+                END_FINALLY
+        try_middle ::= JUMP_FORWARD COME_FROM except_stmts
                 END_FINALLY COME_FROM
-
-        tryelsestmt ::= SETUP_EXCEPT stmts_opt POP_BLOCK
-                JUMP_FORWARD COME_FROM except_stmts
-                END_FINALLY COME_FROM try_else_suite COME_FROM
-
-        tryelsestmt ::= SETUP_EXCEPT stmts_opt POP_BLOCK
-                jmp_abs COME_FROM except_stmts
-                END_FINALLY try_else_suite COME_FROM
-
+                
         except_stmts ::= except_stmts except_stmt
         except_stmts ::= except_stmt
         
@@ -487,24 +483,21 @@ class Parser(GenericASTBuilder):
         except  ::=  POP_TOP POP_TOP POP_TOP c_stmts_opt jmp_abs
         except  ::=  POP_TOP POP_TOP POP_TOP return_stmts
         
-        try_else_suite ::= c_stmts
-        try_else_suite ::= l_stmts
-
         jmp_abs ::= JUMP_ABSOLUTE
         jmp_abs ::= JUMP_BACK
         jmp_abs ::= JUMP_BACK JUMP_BACK_ELSE
         
 
 
-        tryfinallystmt ::= SETUP_FINALLY stmts
+        tryfinallystmt ::= SETUP_FINALLY suite_stmts
                 POP_BLOCK LOAD_CONST
-                COME_FROM stmts_opt END_FINALLY
+                COME_FROM suite_stmts_opt END_FINALLY
                 
-        withstmt ::= expr SETUP_WITH POP_TOP stmts_opt
+        withstmt ::= expr SETUP_WITH POP_TOP suite_stmts_opt
                 POP_BLOCK LOAD_CONST COME_FROM
                 WITH_CLEANUP END_FINALLY
 
-        withasstmt ::= expr SETUP_WITH designator stmts_opt
+        withasstmt ::= expr SETUP_WITH designator suite_stmts_opt
                 POP_BLOCK LOAD_CONST COME_FROM
                 WITH_CLEANUP END_FINALLY
 
@@ -526,12 +519,12 @@ class Parser(GenericASTBuilder):
         whileelsestmt ::= SETUP_LOOP testexpr
                 l_stmts_opt _jump_back
                 POP_BLOCK
-                stmts COME_FROM
+                else_suite COME_FROM
 
         whileelselaststmt ::= SETUP_LOOP testexpr
                 l_stmts_opt _jump_back
                 POP_BLOCK
-                c_stmts COME_FROM
+                else_suitec COME_FROM
 
         _for ::= GET_ITER FOR_ITER
         _for ::= LOAD_CONST FOR_LOOP
@@ -543,13 +536,13 @@ class Parser(GenericASTBuilder):
                 for_block POP_BLOCK COME_FROM
 
         forelsestmt ::= SETUP_LOOP expr _for designator
-                for_block POP_BLOCK stmts COME_FROM
+                for_block POP_BLOCK else_suite COME_FROM
 
         forelselaststmt ::= SETUP_LOOP expr _for designator
-                for_block POP_BLOCK c_stmts COME_FROM
+                for_block POP_BLOCK else_suitec COME_FROM
 
         forelselaststmtl ::= SETUP_LOOP expr _for designator
-                for_block POP_BLOCK l_stmts COME_FROM
+                for_block POP_BLOCK else_suitel COME_FROM
 
         return_stmts ::= return_stmt
         return_stmts ::= _stmts return_stmt

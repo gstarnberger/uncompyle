@@ -1,13 +1,15 @@
 
-                 uncompyle2 -- A Python 2.7 byte-code decompiler
-                          0.12
-                          2012-1-23
+                          uncompyle2 
+        A Python 2.7 byte-code decompiler, written in Python 2.7
+                          0.13
+                          2012-2-22
 
 Introduction
 ------------
 
 'uncompyle2' converts Python byte-code back into equivalent Python
-source. It accepts byte-code from Python version 2.7 only.
+source. It accepts byte-code from Python version 2.7 only. Additionally,
+it will only run on Python 2.7.
 
 The generated source is very readable: docstrings, lists, tuples and
 hashes get pretty-printed.
@@ -51,7 +53,7 @@ Features
 Requirements
 ------------
 
-'decompile' requires Python 2.2 or later.
+uncompyle2 requires Python 2.7
 
 
 Installation

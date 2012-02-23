@@ -664,12 +664,14 @@ class Scanner:
                             and pre[rtarget] not in self.stmts \
                             and self.restrict_to_parent(self.get_target(pre[rtarget]), parent) == rtarget:
                         if code[pre[pre[rtarget]]] == JA \
+                                and self.remove_mid_line_ifs([pos]) \
                                 and target == self.get_target(pre[pre[rtarget]]) \
                                 and pre[pre[rtarget]] not in self.stmts \
                                 and 1 == len(self.remove_mid_line_ifs(self.all_instr(start, pre[pre[rtarget]], \
                                                             (PJIF, PJIT), target))):
                             pass
                         elif code[pre[pre[rtarget]]] == RETURN_VALUE \
+                                and self.remove_mid_line_ifs([pos]) \
                                 and 1 == (len(set(self.remove_mid_line_ifs(self.all_instr(start, pre[pre[rtarget]], \
                                                              (PJIF, PJIT), target))) \
                                           | set(self.remove_mid_line_ifs(self.all_instr(start, pre[pre[rtarget]], \
