@@ -115,6 +115,8 @@ def uncompyle(version, co, out=None, showasm=0, showast=0):
         pass
     walker.mod_globs = Walker.find_globals(ast, set())
     walker.gen_source(ast, customize)
+    for g in walker.mod_globs:
+        walker.write('global %s ## Warning: Unused global\n' % g)
     if walker.ERROR:
         raise walker.ERROR
 

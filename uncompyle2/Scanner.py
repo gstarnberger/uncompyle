@@ -45,7 +45,7 @@ class Token:
 
     def __repr__(self):		return str(self.type)
     def __str__(self):
-        pattr = self.pattr or ''
+        pattr = self.pattr
         if self.linestart:
             return '\n%s\t%-17s %r' % (self.offset, self.type, pattr)
         else:
@@ -239,7 +239,11 @@ class Scanner:
             elif op == JA:
                 target = self.get_target(offset)
                 if target < offset:
-                    opname = 'JUMP_BACK'
+                    if offset in self.stmts and code[offset+3] not in (END_FINALLY, POP_BLOCK) \
+                     and offset not in self.not_continue:
+                        opname = 'CONTINUE'
+                    else:
+                        opname = 'JUMP_BACK'
 
             elif op == LOAD_GLOBAL:
                 try:
@@ -248,18 +252,10 @@ class Scanner:
                 except AttributeError:
                     pass
 
-            elif op == IMPORT_NAME:
-                if pattr == '':
-                    pattr = '.'
-            
             if offset not in replace:
                 rv.append(Token(opname, oparg, pattr, offset, linestart = offset in linestartoffsets))
             else:
                 rv.append(Token(replace[offset], oparg, pattr, offset, linestart = offset in linestartoffsets))
-
-            if offset in self.jump_back_else:
-                rv.append(Token('JUMP_BACK_ELSE', None, None, 
-                    offset="%s_" % offset ))
             
         if self.showasm:
             out = self.out # shortcut
@@ -401,11 +397,11 @@ class Scanner:
             POP_BLOCK, STORE_FAST, DELETE_FAST, STORE_DEREF,
             STORE_GLOBAL, DELETE_GLOBAL, STORE_NAME, DELETE_NAME,
             STORE_ATTR, DELETE_ATTR, STORE_SUBSCR, DELETE_SUBSCR,
-            IMPORT_NAME, IMPORT_FROM, RETURN_VALUE, RAISE_VARARGS, POP_TOP,
+            RETURN_VALUE, RAISE_VARARGS, POP_TOP,
             PRINT_EXPR, PRINT_ITEM, PRINT_NEWLINE, PRINT_ITEM_TO, PRINT_NEWLINE_TO,
             STORE_SLICE_0, STORE_SLICE_1, STORE_SLICE_2, STORE_SLICE_3,
             DELETE_SLICE_0, DELETE_SLICE_1, DELETE_SLICE_2, DELETE_SLICE_3,
-            JUMP_ABSOLUTE,
+            JUMP_ABSOLUTE, EXEC_STMT,
         }
 
         stmt_opcode_seqs = [(PJIF, JF), (PJIF, JA), (PJIT, JF), (PJIT, JA)]
@@ -413,7 +409,7 @@ class Scanner:
         designator_ops = {
             STORE_FAST, STORE_NAME, STORE_GLOBAL, STORE_DEREF, STORE_ATTR, 
             STORE_SLICE_0, STORE_SLICE_1, STORE_SLICE_2, STORE_SLICE_3,
-            STORE_SUBSCR, UNPACK_SEQUENCE,
+            STORE_SUBSCR, UNPACK_SEQUENCE, JA
         }
 
         prelim = self.all_instr(start, end, stmt_opcodes)
@@ -451,7 +447,7 @@ class Scanner:
                     stmts.remove(s)
                     continue
                 j = self.prev[s]
-                while j == JA:
+                while code[j] == JA:
                     j = self.prev[j]
                 if code[j] == LIST_APPEND: #list comprehension
                     stmts.remove(s)
@@ -634,26 +630,25 @@ class Scanner:
             
 
         elif op in (PJIF, PJIT):
-            
+            #import pdb; pdb.set_trace()
             start = pos+3 
             target = self.get_target(pos, op)
             rtarget = self.restrict_to_parent(target, parent)
             pre = self.prev
             
+            if target != rtarget and parent['type'] == 'and/or':
+                self.fixed_jumps[pos] = rtarget
+                return
             #does this jump to right after another cond jump?
             # if so, it's part of a larger conditional
             if (code[pre[target]] in (JUMP_IF_FALSE_OR_POP, JUMP_IF_TRUE_OR_POP,
                     PJIF, PJIT)) and (target > pos):  
                 self.fixed_jumps[pos] = pre[target]
+                self.structs.append({'type':  'and/or',
+                                       'start': start,
+                                       'end':   pre[target]})
                 return
-
-            # is this an if-else at end of a loop?
-            # if so, indicate with special opcode to help parser
-            if target == rtarget:
-                if code[pre[target]] == JA and code[target] != POP_BLOCK:
-                    if self.get_target(pre[target]) < pos:
-                        self.jump_back_else.add(pre[target])
-            
+                       
             # is this an if and
             if op == PJIF:
                 #import pdb; pdb.set_trace()
@@ -666,7 +661,7 @@ class Scanner:
                         if code[pre[pre[rtarget]]] == JA \
                                 and self.remove_mid_line_ifs([pos]) \
                                 and target == self.get_target(pre[pre[rtarget]]) \
-                                and pre[pre[rtarget]] not in self.stmts \
+                                and (pre[pre[rtarget]] not in self.stmts or self.get_target(pre[pre[rtarget]]) > pre[pre[rtarget]])\
                                 and 1 == len(self.remove_mid_line_ifs(self.all_instr(start, pre[pre[rtarget]], \
                                                             (PJIF, PJIT), target))):
                             pass
@@ -710,7 +705,9 @@ class Scanner:
             if pos in self.ignore_if:
                 return
                 
-            if code[pre[rtarget]] == JA and pre[rtarget] in self.stmts and pre[rtarget] != pos:
+            if code[pre[rtarget]] == JA and pre[rtarget] in self.stmts \
+                    and pre[rtarget] != pos and pre[pre[rtarget]] != pos \
+                    and not (code[rtarget] == JA and code[rtarget+3] == POP_BLOCK and code[pre[pre[rtarget]]] != JA):
                 rtarget = pre[rtarget]
                         
             #does the if jump just beyond a jump op, then this is probably an if statement
@@ -727,7 +724,8 @@ class Scanner:
                 self.structs.append({'type':  'if-then',
                                        'start': start,
                                        'end':   pre[rtarget]})
-
+                self.not_continue.add(pre[rtarget])
+                
                 if rtarget < end:
                     self.structs.append({'type':  'if-else',
                                        'start': rtarget,
@@ -743,6 +741,8 @@ class Scanner:
                 unop_target = self.last_instr(pos, target, JF, target)
                 if unop_target and code[unop_target+3] != ROT_TWO:
                     self.fixed_jumps[pos] = unop_target
+                else:
+                    self.fixed_jumps[pos] = self.restrict_to_parent(target, parent)
                 
                 
              
@@ -766,9 +766,9 @@ class Scanner:
                            'end':   n-1}]
         self.loops = []  ## All loop entry points
         self.fixed_jumps = {} ## Map fixed jumps to their real destination
-        self.jump_back_else = set()
         self.ignore_if = set()
         self.build_stmt_indices()
+        self.not_continue = set()
 
         targets = {}
         for i in self.op_range(0, n):
