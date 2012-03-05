@@ -5,7 +5,25 @@
 #
 
 import types
+import operator
+import dis
 import uncompyle2, Scanner
+
+BIN_OP_FUNCS = {
+'BINARY_POWER': operator.pow,
+'BINARY_MULTIPLY': operator.mul,
+'BINARY_DIVIDE': operator.div,
+'BINARY_FLOOR_DIVIDE': operator.floordiv,
+'BINARY_TRUE_DIVIDE': operator.truediv,
+'BINARY_MODULO' : operator.mod,
+'BINARY_ADD': operator.add,
+'BINARY_SUBRACT': operator.sub,
+'BINARY_LSHIFT': operator.lshift,
+'BINARY_RSHIFT': operator.rshift,
+'BINARY_AND': operator.and_,
+'BINARY_XOR': operator.xor,
+'BINARY_OR': operator.or_,
+}
 
 JUMP_OPs = None
 
@@ -144,7 +162,7 @@ def cmp_code_objects(version, code_obj1, code_obj2, name=''):
             scanner = Scanner.getscanner(version)
             scanner.setShowAsm( showasm=0 )
             global JUMP_OPs
-            JUMP_OPs = scanner.JUMP_OPs
+            JUMP_OPs = scanner.JUMP_OPs + ['JUMP_BACK']
             
             # use changed Token class
             #   we (re)set this here to save exception handling,
@@ -159,23 +177,101 @@ def cmp_code_objects(version, code_obj1, code_obj2, name=''):
             finally:
                 scanner.resetTokenClass() # restore Token class
 
+            targets1 = dis.findlabels(code_obj1.co_code)
             tokens1 = [t for t in tokens1 if t.type != 'COME_FROM']
             tokens2 = [t for t in tokens2 if t.type != 'COME_FROM']
-            # compare length
-            if len(tokens1) != len(tokens2):
-                #continue
-                raise CmpErrorCodeLen(name, tokens1, tokens2)
-            # compare contents
-            #print len(tokens1), type(tokens1), type(tokens2)
-            for i in xrange(len(tokens1)):
-                if tokens1[i] != tokens2[i]:
-                    #print '-->', i, type(tokens1[i]), type(tokens2[i])
-                    raise CmpErrorCode(name, tokens1[i].offset, tokens1[i],
-                               tokens2[i], tokens1, tokens2)
+
+            i1 = 0; i2 = 0
+            offset_map = {}; check_jumps = {}
+            while i1 < len(tokens1):
+                if i2 >= len(tokens2):
+                    if len(tokens1) == len(tokens2) + 2 \
+                          and tokens1[-1].type == 'RETURN_VALUE' \
+                          and tokens1[-2].type == 'LOAD_CONST' \
+                          and tokens1[-2].pattr == None \
+                          and tokens1[-3].type == 'RETURN_VALUE':
+                        break
+                    else:
+                        raise CmpErrorCodeLen(name, tokens1, tokens2)
+            
+                offset_map[tokens1[i1].offset] = tokens2[i2].offset
+                
+                for idx1, idx2, offset2 in check_jumps.get(tokens1[i1].offset, []):
+                    if offset2 != tokens2[i2].offset:
+                        raise CmpErrorCode(name, tokens1[idx1].offset, tokens1[idx1],
+                                   tokens2[idx2], tokens1, tokens2)
+                        
+                if tokens1[i1] != tokens2[i2]:
+                    if tokens1[i1].type == 'LOAD_CONST' == tokens2[i2].type:
+                        i = 1
+                        while tokens1[i1+i].type == 'LOAD_CONST':
+                            i += 1
+                        if tokens1[i1+i].type.startswith(('BUILD_TUPLE', 'BUILD_LIST')) \
+                              and i == int(tokens1[i1+i].type.split('_')[-1]):
+                            t = tuple([ elem.pattr for elem in tokens1[i1:i1+i] ])
+                            if t != tokens2[i2].pattr:
+                                raise CmpErrorCode(name, tokens1[i1].offset, tokens1[i1],
+                                           tokens2[i2], tokens1, tokens2)
+                            i1 += i + 1
+                            i2 += 1
+                            continue
+                        elif i == 2 and tokens1[i1+i].type == 'ROT_TWO' and tokens2[i2+1].type == 'UNPACK_SEQUENCE_2':
+                            i1 += 3
+                            i2 += 2
+                            continue
+                        elif i == 2 and tokens1[i1+i].type in BIN_OP_FUNCS:
+                            f = BIN_OP_FUNCS[tokens1[i1+i].type] 
+                            if f(tokens1[i1].pattr, tokens1[i1+1].pattr) == tokens2[i2].pattr:
+                                i1 += 3
+                                i2 += 1
+                                continue
+                    elif tokens1[i1].type == 'UNARY_NOT':
+                        if tokens2[i2].type == 'POP_JUMP_IF_TRUE':
+                            if tokens1[i1+1].type == 'POP_JUMP_IF_FALSE':
+                                i1 += 2
+                                i2 += 1
+                                continue
+                        elif tokens2[i2].type == 'POP_JUMP_IF_FALSE':
+                            if tokens1[i1+1].type == 'POP_JUMP_IF_TRUE':
+                                i1 += 2
+                                i2 += 1
+                                continue
+                    elif tokens1[i1].type in ('JUMP_FORWARD', 'JUMP_BACK') \
+                          and tokens1[i1-1].type == 'RETURN_VALUE' \
+                          and tokens2[i2-1].type in ('RETURN_VALUE', 'RETURN_END_IF') \
+                          and int(tokens1[i1].offset) not in targets1:
+                        i1 += 1
+                        continue
+                    elif tokens1[i1].type == 'JUMP_FORWARD' and tokens2[i2].type == 'JUMP_BACK' \
+                          and tokens1[i1+1].type == 'JUMP_BACK' and tokens2[i2+1].type == 'JUMP_BACK' \
+                          and int(tokens1[i1].pattr) == int(tokens1[i1].offset) + 3:
+                        if int(tokens1[i1].pattr) == int(tokens1[i1+1].offset):
+                            i1 += 2
+                            i2 += 2
+                            continue
+                        
+                    raise CmpErrorCode(name, tokens1[i1].offset, tokens1[i1],
+                               tokens2[i2], tokens1, tokens2)
+                elif tokens1[i1].type in JUMP_OPs and tokens1[i1].pattr != tokens2[i2].pattr:
+                    dest1 = int(tokens1[i1].pattr)
+                    dest2 = int(tokens2[i2].pattr)
+                    if tokens1[i1].type == 'JUMP_BACK':
+                        if offset_map[dest1] != dest2:
+                            raise CmpErrorCode(name, tokens1[i1].offset, tokens1[i1],
+                                       tokens2[i2], tokens1, tokens2)
+                    else:
+                        #import pdb; pdb.set_trace()
+                        if dest1 in check_jumps:
+                            check_jumps[dest1].append((i1,i2,dest2))
+                        else:
+                            check_jumps[dest1] = [(i1,i2,dest2)]
+                            
+                i1 += 1
+                i2 += 1
             del tokens1, tokens2 # save memory
         elif member == 'co_consts':
-            # partial optimization can make the co_consts look different
-            #   , so we'll just compare the code consts
+            # partial optimization can make the co_consts look different,
+            #   so we'll just compare the code consts
             codes1 = ( c for c in code_obj1.co_consts if type(c) == types.CodeType )
             codes2 = ( c for c in code_obj2.co_consts if type(c) == types.CodeType )
             
@@ -190,14 +286,11 @@ def cmp_code_objects(version, code_obj1, code_obj2, name=''):
 
 class Token(Scanner.Token):
     """Token class with changed semantics for 'cmp()'."""
-
+    
     def __cmp__(self, o):
         t = self.type # shortcut
-#        if t in JUMP_OPs:
-#            # ignore offset
-#            return cmp(t, o.type)
-#        else:
-        if t == 'LOAD_NAME' and o.type == 'LOAD_CONST':
+        loads = ('LOAD_NAME', 'LOAD_GLOBAL', 'LOAD_CONST')
+        if t in loads and o.type in loads:
             if self.pattr == 'None' and o.pattr == None:
                 return 0
         if t == 'BUILD_TUPLE_0' and o.type == 'LOAD_CONST' and o.pattr == ():
@@ -206,6 +299,13 @@ class Token(Scanner.Token):
             return 0
         if t == 'PRINT_ITEM_CONT' and o.type == 'PRINT_ITEM':
             return 0
+        if t == 'RETURN_VALUE' and o.type == 'RETURN_END_IF':
+            return 0
+        if t == 'JUMP_IF_FALSE_OR_POP' and o.type == 'POP_JUMP_IF_FALSE':
+            return 0
+        if t in JUMP_OPs:
+            # ignore offset
+            return cmp(t, o.type)
         return cmp(t, o.type) or cmp(self.pattr, o.pattr)
 
     def __repr__(self):

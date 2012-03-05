@@ -251,6 +251,9 @@ class Scanner:
                         opname = 'LOAD_ASSERT'
                 except AttributeError:
                     pass
+            elif op == RETURN_VALUE:
+                if offset in self.return_end_ifs:
+                    opname = 'RETURN_END_IF'
 
             if offset not in replace:
                 rv.append(Token(opname, oparg, pattr, offset, linestart = offset in linestartoffsets))
@@ -487,8 +490,7 @@ class Scanner:
         except_match = self.first_instr(start, self.lines[start].next, POP_JUMP_IF_FALSE)
         if except_match:
             jmp = self.prev[self.get_target(except_match)]
-            if self.code[jmp] not in (JA, JF, RETURN_VALUE):
-                print '############################', jmp, dis.opname[self.code[jmp]]
+            self.ignore_if.add(except_match)
             return jmp
             
         count_END_FINALLY = 0
@@ -540,6 +542,7 @@ class Scanner:
         origStructCount = len(self.structs)
 
         if op == SETUP_LOOP:
+            #import pdb; pdb.set_trace()
             start = pos+3
             target = self.get_target(pos, op)
             end    = self.restrict_to_parent(target, parent)
@@ -549,42 +552,54 @@ class Scanner:
             (line_no, next_line_byte) = self.lines[pos]
             jump_back = self.last_instr(start, end, JA,
                                           next_line_byte, False)
-            if not jump_back:
-                return
-
-            if self.get_target(jump_back) >= next_line_byte:
-                jump_back = self.last_instr(start, end, JA,
-                                          start, False)
-
-                
-            if end > jump_back+4 and code[end] in (JF, JA):
-                if code[jump_back+4] in (JA, JF):
-                    if self.get_target(jump_back+4) == self.get_target(end):
-                        self.fixed_jumps[pos] = jump_back+4
-                        end = jump_back+4
-            elif target < pos:
-                self.fixed_jumps[pos] = jump_back+4
-                end = jump_back+4
-             
-            target = self.get_target(jump_back, JA)
-
-            if code[target] in (FOR_ITER, GET_ITER):
-                loop_type = 'for'
+            if not jump_back: # loop suite ends in return. wtf right?
+                jump_back = self.last_instr(start, end, RETURN_VALUE) + 1
+                if not jump_back:               
+                    return
+                if code[self.prev[next_line_byte]] not in (PJIF, PJIT):
+                    loop_type = 'for'
+                else:
+                    loop_type = 'while'
+                    self.ignore_if.add(self.prev[next_line_byte])
+                target = next_line_byte
+                end = jump_back + 3
             else:
-                loop_type = 'while'
-                test = self.prev[next_line_byte]
-                self.ignore_if.add(test)
-                test_target = self.get_target(test)
-                if test_target > (jump_back+3):
-                    jump_back = test_target
+                if self.get_target(jump_back) >= next_line_byte:
+                    jump_back = self.last_instr(start, end, JA,
+                                              start, False)
+                    
+                if end > jump_back+4 and code[end] in (JF, JA):
+                    if code[jump_back+4] in (JA, JF):
+                        if self.get_target(jump_back+4) == self.get_target(end):
+                            self.fixed_jumps[pos] = jump_back+4
+                            end = jump_back+4
+                elif target < pos:
+                    self.fixed_jumps[pos] = jump_back+4
+                    end = jump_back+4
+                 
+                target = self.get_target(jump_back, JA)
+
+                if code[target] in (FOR_ITER, GET_ITER):
+                    loop_type = 'for'
+                else:
+                    loop_type = 'while'
+                    test = self.prev[next_line_byte]
+                    if test == pos:
+                        loop_type = 'while 1'
+                    else:
+                        self.ignore_if.add(test)
+                        test_target = self.get_target(test)
+                        if test_target > (jump_back+3):
+                            jump_back = test_target
                  
             self.loops.append(target)
             self.structs.append({'type': loop_type + '-loop',
                                    'start': target,
                                    'end':   jump_back})
-            self.structs.append({'type': loop_type + '-else',
-                                   'start': jump_back+3,
-                                   'end':   end})
+            if jump_back+3 != end:
+                self.structs.append({'type': loop_type + '-else',
+                                       'start': jump_back+3,
+                                       'end':   end})
         elif op == SETUP_EXCEPT:
             start  = pos+3
             target = self.get_target(pos, op)
@@ -693,7 +708,7 @@ class Scanner:
                 if pre[next] == pos:
                     pass
                 elif code[next] in (JF, JA) and target == self.get_target(next):
-                    if code[pre[next]] in (PJIF, PJIT):
+                    if code[pre[next]] in (PJIF, PJIT) and not(code[self.prev[rtarget]] == JF and target > pos):
                         self.fixed_jumps[pos] = pre[next]
                         return
                 elif code[next] == JA and code[target] in (JA, JF) \
@@ -734,6 +749,7 @@ class Scanner:
                 self.structs.append({'type':  'if-then',
                                        'start': start,
                                        'end':   rtarget})
+                self.return_end_ifs.add(pre[rtarget])
 
         elif op in (JUMP_IF_FALSE_OR_POP, JUMP_IF_TRUE_OR_POP):
             target = self.get_target(pos, op)
@@ -769,6 +785,7 @@ class Scanner:
         self.ignore_if = set()
         self.build_stmt_indices()
         self.not_continue = set()
+        self.return_end_ifs = set()
 
         targets = {}
         for i in self.op_range(0, n):

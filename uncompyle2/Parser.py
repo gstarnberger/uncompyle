@@ -261,7 +261,6 @@ class Parser(GenericASTBuilder):
         stmts ::= sstmt
         sstmt ::= stmt
         sstmt ::= ifelsestmtr
-        sstmt ::= return_stmt
         sstmt ::= return_stmt RETURN_LAST
         
         stmts_opt ::= stmts
@@ -333,11 +332,20 @@ class Parser(GenericASTBuilder):
         stmt ::= call_stmt
         call_stmt ::= expr POP_TOP
 
+        stmt ::= return_stmt
         return_stmt ::= expr RETURN_VALUE
+        return_stmts ::= return_stmt
+        return_stmts ::= _stmts return_stmt
+        
+        return_if_stmts ::= return_if_stmt
+        return_if_stmts ::= _stmts return_if_stmt
+        return_if_stmt ::= expr RETURN_END_IF
+        
 
         stmt ::= break_stmt
         break_stmt ::= BREAK_LOOP
         
+        stmt ::= continue_stmt
         continue_stmt ::= CONTINUE
         continue_stmt ::= CONTINUE_LOOP
         continue_stmts ::= _stmts lastl_stmt continue_stmt
@@ -421,7 +429,7 @@ class Parser(GenericASTBuilder):
         testfalse ::= expr jmp_false
         testtrue ::= expr jmp_true
         
-        _ifstmts_jump ::= return_stmts
+        _ifstmts_jump ::= return_if_stmts
         _ifstmts_jump ::= c_stmts_opt JUMP_FORWARD COME_FROM
         
         iflaststmt ::= testexpr c_stmts_opt JUMP_ABSOLUTE
@@ -432,7 +440,7 @@ class Parser(GenericASTBuilder):
 
         ifelsestmtc ::= testexpr c_stmts_opt JUMP_ABSOLUTE else_suitec
 
-        ifelsestmtr ::= testexpr return_stmts return_stmts
+        ifelsestmtr ::= testexpr return_if_stmts return_stmts
 
         ifelsestmtl ::= testexpr c_stmts_opt JUMP_BACK else_suitel
         
@@ -532,9 +540,6 @@ class Parser(GenericASTBuilder):
         forelselaststmtl ::= SETUP_LOOP expr _for designator
                 for_block POP_BLOCK else_suitel COME_FROM
 
-        return_stmts ::= return_stmt
-        return_stmts ::= _stmts return_stmt
-        
         '''
 
     def p_expr(self, args):
@@ -636,9 +641,7 @@ class Parser(GenericASTBuilder):
         stmt ::= conditional_lambda2
         
         return_lambda ::= expr RETURN_VALUE LAMBDA_MARKER
-        conditional_lambda ::= expr POP_JUMP_IF_FALSE return_stmt return_stmt LAMBDA_MARKER 
-        conditional_lambda2 ::= expr POP_JUMP_IF_FALSE expr POP_JUMP_IF_FALSE 
-            return_stmt return_stmt LAMBDA_MARKER 
+        conditional_lambda ::= expr POP_JUMP_IF_FALSE return_if_stmt return_stmt LAMBDA_MARKER 
 
         cmp ::= cmp_list
         cmp ::= compare

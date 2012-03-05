@@ -417,7 +417,7 @@ def find_all_globals(node, globs):
 def find_none(node):
     for n in node:
         if isinstance(n, AST):
-            if not (n == 'return_stmt'): 
+            if not (n == 'return_stmt' or n == 'return_if_stmt'): 
                 if find_none(n):
                     return True
         elif n.type == 'LOAD_CONST' and n.pattr == None:
@@ -597,6 +597,18 @@ class Walker(GenericASTTraversal, object):
             self.print_()
             self.prune() # stop recursing
         
+    def n_return_if_stmt(self, node):
+        if self.__params['isLambda']:
+            self.preorder(node[0])
+            self.prune()
+        else:
+            self.write(self.indent, 'return')
+            if self.return_none or node != AST('return_if_stmt', [NONE, Token('RETURN_END_IF')]):
+                self.write(' ')
+                self.preorder(node[0])
+            self.print_()
+            self.prune() # stop recursing
+        
     def n_yield(self, node):
         self.write('yield')
         if node != AST('yield', [NONE, Token('YIELD_VALUE')]):
@@ -754,8 +766,8 @@ class Walker(GenericASTTraversal, object):
         if len(node[2]) != 2:
             self.default(node)
 
-        if not (node[2][0][0][0] == 'ifstmt' and node[2][0][0][0][1][0] == 'return_stmts') \
-                and not (node[2][0][-1][0] == 'ifstmt' and node[2][0][-1][0][1][0] == 'return_stmts'):
+        if not (node[2][0][0][0] == 'ifstmt' and node[2][0][0][0][1][0] == 'return_if_stmts') \
+                and not (node[2][0][-1][0] == 'ifstmt' and node[2][0][-1][0][1][0] == 'return_if_stmts'):
             self.default(node)
             return
         
@@ -768,13 +780,13 @@ class Walker(GenericASTTraversal, object):
         
         if_ret_at_end = False
         if len(node[2][0]) >= 3:
-            if node[2][0][-1][0] == 'ifstmt' and node[2][0][-1][0][1][0] == 'return_stmts':
+            if node[2][0][-1][0] == 'ifstmt' and node[2][0][-1][0][1][0] == 'return_if_stmts':
                 if_ret_at_end = True
                 
         past_else = False
         prev_stmt_is_if_ret = True
         for n in node[2][0]:
-            if (n[0] == 'ifstmt' and n[0][1][0] == 'return_stmts'):
+            if (n[0] == 'ifstmt' and n[0][1][0] == 'return_if_stmts'):
                 if prev_stmt_is_if_ret:
                     n[0].type = 'elifstmt'
                 prev_stmt_is_if_ret = True
@@ -797,7 +809,7 @@ class Walker(GenericASTTraversal, object):
             self.default(node)
 
         for n in node[2][0]:
-            if not (n[0] == 'ifstmt' and n[0][1][0] == 'return_stmts'):
+            if not (n[0] == 'ifstmt' and n[0][1][0] == 'return_if_stmts'):
                 self.default(node)
                 return
 
@@ -810,7 +822,7 @@ class Walker(GenericASTTraversal, object):
         
         if_ret_at_end = False
         if len(node[2][0]) >= 3:
-            if node[2][0][-1][0] == 'ifstmt' and node[2][0][-1][0][1][0] == 'return_stmts':
+            if node[2][0][-1][0] == 'ifstmt' and node[2][0][-1][0][1][0] == 'return_if_stmts':
                 if_ret_at_end = True
                 
         past_else = False
@@ -1385,12 +1397,6 @@ class Walker(GenericASTTraversal, object):
                 self.print_(repr(ast))
             return ast        
             
-#        while(len(tokens) > 2):
-#            if (tokens[-1] == Token('RETURN_VALUE')) and (tokens[-2] == Token('LOAD_CONST') and (tokens[-3].type != 'END_IF_LINE')):
-#                del tokens[-2:]
-#            else:
-#                break
-
         if len(tokens) > 2 or len(tokens) == 2 and not noneInNames:
             if tokens[-1] == Token('RETURN_VALUE'):
                 if tokens[-2] == Token('LOAD_CONST'):
@@ -1404,28 +1410,7 @@ class Walker(GenericASTTraversal, object):
         try:
             ast = Parser.parse(tokens, customize)
         except Parser.ParserError, e:
-            try:
-                tokens.append(Token('LOAD_CONST'))
-                tokens.append(Token('RETURN_VALUE'))
-                ast = Parser.parse(tokens, customize)
-            except Parser.ParserError, e:  
-                try:    
-                    del tokens[-2:]
-                    Parser.p.addRule('stmt ::= continue_stmt', Parser.nop)
-                    ast = Parser.parse(tokens, customize)
-                except Parser.ParserError, e:  
-                    try:    
-                        Parser.p.addRule('c_stmts ::= return_stmt', Parser.nop)
-                        ast = Parser.parse(tokens, customize)
-                    except:
-                        try:    
-                            Parser.p.addRule('stmt ::= return_stmt', Parser.nop)
-                            ast = Parser.parse(tokens, customize)
-                        except:
-                            raise ParserError(e, tokens)
-                finally:
-                    Parser.p.cleanup()
-                    Parser.p = Parser.Parser()
+            raise ParserError(e, tokens)
 
 
         if self.showast:
