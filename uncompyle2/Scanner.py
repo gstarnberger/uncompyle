@@ -515,7 +515,7 @@ class Scanner:
         for pjit in pjits:
             tgt = self.get_target(pjit)-3
             for i in result:
-                if i < pjit or i >= tgt:
+                if i <= pjit or i >= tgt:
                     filtered.append(i)
             result = filtered
             filtered = []
@@ -715,14 +715,14 @@ class Scanner:
                                 and self.remove_mid_line_ifs([pos]) \
                                 and target == self.get_target(pre[pre[rtarget]]) \
                                 and (pre[pre[rtarget]] not in self.stmts or self.get_target(pre[pre[rtarget]]) > pre[pre[rtarget]])\
-                                and 1 == len(self.remove_mid_line_ifs(self.rem_or(start, pre[pre[rtarget]], PJIF, target))):
+                                and 1 == len(self.remove_mid_line_ifs(self.rem_or(start, pre[pre[rtarget]], (PJIF, PJIT), target))):
                             pass
                         elif code[pre[pre[rtarget]]] == RETURN_VALUE \
                                 and self.remove_mid_line_ifs([pos]) \
                                 and 1 == (len(set(self.remove_mid_line_ifs(self.rem_or(start, pre[pre[rtarget]], \
-                                                             PJIF, target))) \
+                                                             (PJIF, PJIT), target))) \
                                               | set(self.remove_mid_line_ifs(self.rem_or(start, pre[pre[rtarget]], \
-                                                           (PJIF, JA), pre[rtarget], True))))):
+                                                           (PJIF, PJIT, JA), pre[rtarget], True))))):
                             pass
                         else:
                             fix = None
