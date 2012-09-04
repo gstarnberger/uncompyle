@@ -1361,7 +1361,7 @@ class Walker(GenericASTTraversal, object):
         #else:
         #    print ast[-1][-1]
 
-        for g in find_globals(ast, {}).keys():
+        for g in find_globals(ast, set()):
            self.print_(indent, 'global ', g)
            
         self.gen_source(ast, code._customize)
