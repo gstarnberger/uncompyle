@@ -5,7 +5,7 @@ This source is part of the decompyle test suite.
 Snippet taken from python libs's test_class.py
 
 decompyle is a Python byte-code decompiler
-See http://www.goebel-consult.de/decompyle/ for download and
+See http://www.crazy-compilers.com/decompyle/ for
 for further information
 """
 

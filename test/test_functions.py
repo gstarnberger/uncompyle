@@ -3,7 +3,7 @@
 # This source is part of the decompyle test suite.
 #
 # decompyle is a Python byte-code decompiler
-# See http://www.goebel-consult.de/decompyle/ for download and
+# See http://www.crazy-compilers.com/decompyle/ for
 # for further information
 
 def x0():
