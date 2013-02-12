@@ -53,7 +53,7 @@ minint = -sys.maxint-1
 # the end of functions).
 
 RETURN_LOCALS = AST('return_stmt',
-			  [ AST('expr', [ Token('LOAD_LOCALS') ]),
+			  [ AST('ret_expr', [AST('expr', [ Token('LOAD_LOCALS') ])]),
 			    Token('RETURN_VALUE')])
 
 
@@ -198,13 +198,15 @@ TABLE_DIRECT = {
 #   'dup_topx':		( '%c', 0),
     'designList':	( '%c = %c', 0, -1 ),
     'and':          	( '%c and %c', 0, 2 ),
+    'ret_and':        	( '%c and %c', 0, 2 ),
     'and2':          	( '%c', 3 ),
     'or':           	( '%c or %c', 0, 2 ),
+    'ret_or':           	( '%c or %c', 0, 2 ),
     'conditional':  ( '%p if %p else %p', (2,27), (0,27), (4,27)),
-    'conditionaland':  ( '%p if %p and %p else %p', (4,27), (0,24), (2,24), (6,27)),
+    'ret_cond':     ( '%p if %p else %p', (2,27), (0,27), (4,27)),
     'conditionalnot':  ( '%p if not %p else %p', (2,27), (0,22), (4,27)),
+    'ret_cond_not':  ( '%p if not %p else %p', (2,27), (0,22), (4,27)),
     'conditional_lambda':  ( '(%c if %c else %c)', 2, 0, 3),
-    'conditional_lambda2':  ( '(%c if %p and %p else %c)', 4, (0,24), (2,24), 5),
     'return_lambda':    ('%c', 0),
     'compare':		( '%p %[-1]{pattr} %p', (0,19), (1,19) ),
     'cmp_list':		( '%p %p', (0,20), (1,19)),
@@ -364,12 +366,15 @@ PRECEDENCE = {
     'unary_not':            22,
     
     'and':                  24,
+    'ret_and':              24,
     
     'or':                   26,
+    'ret_or':               26,
     
     'conditional':          28,
-    'conditionaland':       28,
     'conditionalnot':       28,
+    'ret_cond':             28,
+    'ret_cond_not':         28,
     
     '_mklambda':            30,
     'yield':                101
@@ -592,7 +597,7 @@ class Walker(GenericASTTraversal, object):
             self.prune()
         else:
             self.write(self.indent, 'return')
-            if self.return_none or node != AST('return_stmt', [NONE, Token('RETURN_VALUE')]):
+            if self.return_none or node != AST('return_stmt', [AST('ret_expr', [NONE]), Token('RETURN_VALUE')]):
                 self.write(' ')
                 self.preorder(node[0])
             self.print_()
@@ -604,7 +609,7 @@ class Walker(GenericASTTraversal, object):
             self.prune()
         else:
             self.write(self.indent, 'return')
-            if self.return_none or node != AST('return_if_stmt', [NONE, Token('RETURN_END_IF')]):
+            if self.return_none or node != AST('return_stmt', [AST('ret_expr', [NONE]), Token('RETURN_END_IF')]):
                 self.write(' ')
                 self.preorder(node[0])
             self.print_()
@@ -667,6 +672,14 @@ class Walker(GenericASTTraversal, object):
         self.prec = p
         self.prune()
         
+    def n_ret_expr(self, node):
+        if len(node) == 1 and node[0] == 'expr':
+            self.n_expr(node[0])
+        else:
+            self.n_expr(node)
+    
+    n_ret_expr_or_cond = n_expr
+    
     def n_binary_expr(self, node):
         self.preorder(node[0])
         self.write(' ')

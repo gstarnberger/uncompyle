@@ -333,13 +333,13 @@ class Parser(GenericASTBuilder):
         call_stmt ::= expr POP_TOP
 
         stmt ::= return_stmt
-        return_stmt ::= expr RETURN_VALUE
+        return_stmt ::= ret_expr RETURN_VALUE
         return_stmts ::= return_stmt
         return_stmts ::= _stmts return_stmt
         
         return_if_stmts ::= return_if_stmt
         return_if_stmts ::= _stmts return_if_stmt
-        return_if_stmt ::= expr RETURN_END_IF
+        return_if_stmt ::= ret_expr RETURN_END_IF
         
 
         stmt ::= break_stmt
@@ -636,11 +636,24 @@ class Parser(GenericASTBuilder):
         conditional ::= expr POP_JUMP_IF_FALSE expr JUMP_FORWARD expr COME_FROM
         conditional ::= expr POP_JUMP_IF_FALSE expr JUMP_ABSOLUTE expr
         expr ::= conditionalnot
-        conditionalnot ::= expr POP_JUMP_IF_TRUE expr _jump expr COME_FROM
+        conditionalnot ::= expr POP_JUMP_IF_TRUE expr JUMP_FORWARD expr COME_FROM
+        conditionalnot ::= expr POP_JUMP_IF_TRUE expr JUMP_ABSOLUTE expr 
+
+        ret_expr ::= expr
+        ret_expr ::= ret_and
+        ret_expr ::= ret_or
+        
+        ret_expr_or_cond ::= ret_expr
+        ret_expr_or_cond ::= ret_cond
+        ret_expr_or_cond ::= ret_cond_not
+
+        ret_and  ::= expr JUMP_IF_FALSE_OR_POP ret_expr_or_cond COME_FROM
+        ret_or   ::= expr JUMP_IF_TRUE_OR_POP ret_expr_or_cond COME_FROM
+        ret_cond ::= expr POP_JUMP_IF_FALSE expr RETURN_END_IF ret_expr_or_cond
+        ret_cond_not ::= expr POP_JUMP_IF_TRUE expr RETURN_END_IF ret_expr_or_cond
 
         stmt ::= return_lambda
         stmt ::= conditional_lambda
-        stmt ::= conditional_lambda2
         
         return_lambda ::= expr RETURN_VALUE LAMBDA_MARKER
         conditional_lambda ::= expr POP_JUMP_IF_FALSE return_if_stmt return_stmt LAMBDA_MARKER 
