@@ -655,7 +655,7 @@ class Parser(GenericASTBuilder):
         stmt ::= return_lambda
         stmt ::= conditional_lambda
         
-        return_lambda ::= expr RETURN_VALUE LAMBDA_MARKER
+        return_lambda ::= ret_expr RETURN_VALUE LAMBDA_MARKER
         conditional_lambda ::= expr POP_JUMP_IF_FALSE return_if_stmt return_stmt LAMBDA_MARKER 
 
         cmp ::= cmp_list
