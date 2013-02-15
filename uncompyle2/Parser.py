@@ -233,9 +233,7 @@ class Parser(GenericASTBuilder):
         importlist2 ::= importlist2 import_as
         importlist2 ::= import_as
         import_as ::= IMPORT_NAME designator
-        import_as ::= IMPORT_NAME LOAD_ATTR designator
-        import_as ::= IMPORT_NAME LOAD_ATTR LOAD_ATTR designator
-        import_as ::= IMPORT_NAME LOAD_ATTR LOAD_ATTR LOAD_ATTR designator
+        import_as ::= IMPORT_NAME load_attrs designator
         import_as ::= IMPORT_FROM designator
 
         importstmt ::= LOAD_CONST LOAD_CONST import_as 
@@ -249,10 +247,11 @@ class Parser(GenericASTBuilder):
         imports_cont ::= import_cont
         import_cont ::= LOAD_CONST LOAD_CONST import_as_cont
         import_as_cont ::= IMPORT_NAME_CONT designator
-        import_as_cont ::= IMPORT_NAME_CONT LOAD_ATTR designator
-        import_as_cont ::= IMPORT_NAME_CONT LOAD_ATTR LOAD_ATTR designator
-        import_as_cont ::= IMPORT_NAME_CONT LOAD_ATTR LOAD_ATTR LOAD_ATTR designator
+        import_as_cont ::= IMPORT_NAME_CONT load_attrs designator
         import_as_cont ::= IMPORT_FROM designator
+
+        load_attrs ::= LOAD_ATTR
+        load_attrs ::= load_attrs LOAD_ATTR
         '''
 
     def p_grammar(self, args):
@@ -472,6 +471,7 @@ class Parser(GenericASTBuilder):
         except_suite ::= c_stmts_opt JUMP_FORWARD
         except_suite ::= c_stmts_opt jmp_abs
         except_suite ::= return_stmts
+        except_suite ::= continue_stmts
                       
         except_cond1 ::= DUP_TOP expr COMPARE_OP
                 POP_JUMP_IF_FALSE POP_TOP POP_TOP POP_TOP                
