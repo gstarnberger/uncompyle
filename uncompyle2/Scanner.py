@@ -767,12 +767,20 @@ class Scanner:
                 return
                 
             if code[pre[rtarget]] == JA and pre[rtarget] in self.stmts \
-                    and pre[rtarget] != pos and pre[pre[rtarget]] != pos \
-                    and not (code[rtarget] == JA and code[rtarget+3] == POP_BLOCK and code[pre[pre[rtarget]]] != JA):
-                rtarget = pre[rtarget]
+                    and pre[rtarget] != pos and pre[pre[rtarget]] != pos:
+                if code[rtarget] == JA and code[rtarget+3] == POP_BLOCK:
+                    if code[pre[pre[rtarget]]] != JA:
+                        pass
+                    elif self.get_target(pre[pre[rtarget]]) != target:
+                        pass
+                    else:
+                        rtarget = pre[rtarget]
+                else:
+                    rtarget = pre[rtarget]
                         
             #does the if jump just beyond a jump op, then this is probably an if statement
             if code[pre[rtarget]] in (JA, JF):
+                #import pdb; pdb.set_trace()
                 if_end = self.get_target(pre[rtarget])
                 
                 #is this a loop not an if?
