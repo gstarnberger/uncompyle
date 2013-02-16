@@ -404,7 +404,7 @@ class Parser(GenericASTBuilder):
                 LOAD_ASSERT RAISE_VARARGS
                 
         assert2 ::= assert_expr POP_JUMP_IF_TRUE
-                LOAD_ASSERT expr RAISE_VARARGS
+                LOAD_ASSERT expr CALL_FUNCTION_1 RAISE_VARARGS
                 
         assert_expr ::= expr
         assert_expr ::= assert_expr_or
@@ -471,7 +471,6 @@ class Parser(GenericASTBuilder):
         except_suite ::= c_stmts_opt JUMP_FORWARD
         except_suite ::= c_stmts_opt jmp_abs
         except_suite ::= return_stmts
-        except_suite ::= continue_stmts
                       
         except_cond1 ::= DUP_TOP expr COMPARE_OP
                 POP_JUMP_IF_FALSE POP_TOP POP_TOP POP_TOP                
