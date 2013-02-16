@@ -531,6 +531,7 @@ class Scanner:
         if except_match:
             jmp = self.prev[self.get_target(except_match)]
             self.ignore_if.add(except_match)
+            self.not_continue.add(jmp)
             return jmp
             
         count_END_FINALLY = 0
@@ -540,6 +541,7 @@ class Scanner:
             if op == END_FINALLY:
                 if count_END_FINALLY == count_SETUP_:
                     assert self.code[self.prev[i]] in (JA, JF, RETURN_VALUE)
+                    self.not_continue.add(self.prev[i])
                     return self.prev[i]
                 count_END_FINALLY += 1
             elif op in (SETUP_EXCEPT, SETUP_WITH, SETUP_FINALLY):
