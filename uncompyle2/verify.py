@@ -225,6 +225,11 @@ def cmp_code_objects(version, code_obj1, code_obj2, name=''):
                                 i1 += 3
                                 i2 += 1
                                 continue
+                        elif i == 1 and tokens1[i1+i].type == 'STORE_NAME' == tokens2[i2+i].type \
+                              and tokens1[i1+i].pattr == '__doc__' == tokens2[i2+i].pattr:
+                            i1 += 2
+                            i2 += 2
+                            continue
                     elif tokens1[i1].type == 'UNARY_NOT':
                         if tokens2[i2].type == 'POP_JUMP_IF_TRUE':
                             if tokens1[i1+1].type == 'POP_JUMP_IF_FALSE':

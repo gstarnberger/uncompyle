@@ -105,7 +105,6 @@ class Scanner:
         n = len(code)
         self.prev = [0]
         for i in self.op_range(0, n):
-            c = code[i]
             op = code[i]
             self.prev.append(i)
             if op >= HAVE_ARGUMENT:
@@ -128,8 +127,6 @@ class Scanner:
             self.lines.append(linetuple(prev_line_no, n))
             j+=1
         
-        cf = self.find_jump_targets(code)
-
         if classname:
             classname = '_' + classname.lstrip('_') + '__'
             def unmangle(name):
@@ -144,6 +141,14 @@ class Scanner:
             free = co.co_cellvars + co.co_freevars
             names = co.co_names
             varnames = co.co_varnames
+
+        self.load_asserts = set()
+        for i in self.op_range(0, n):
+            if code[i] == PJIT and code[i+3] == LOAD_GLOBAL:
+                if names[code[i+4] + 256*code[i+5]] == 'AssertionError':
+                    self.load_asserts.add(i+3)
+                    
+        cf = self.find_jump_targets(code)
 
         last_stmt = self.next_stmt[0]
         i = self.next_stmt[last_stmt]
@@ -224,7 +229,7 @@ class Scanner:
                             UNPACK_SEQUENCE,
                             MAKE_FUNCTION, CALL_FUNCTION, MAKE_CLOSURE,
                             CALL_FUNCTION_VAR, CALL_FUNCTION_KW,
-                            CALL_FUNCTION_VAR_KW, DUP_TOPX,
+                            CALL_FUNCTION_VAR_KW, DUP_TOPX, RAISE_VARARGS
                             ):
                 # CE - Hack for >= 2.5
                 #      Now all values loaded via LOAD_CLOSURE are packed into
@@ -246,11 +251,8 @@ class Scanner:
                         opname = 'JUMP_BACK'
 
             elif op == LOAD_GLOBAL:
-                try:
-                    if pattr == 'AssertionError' and rv and rv[-1] == 'POP_JUMP_IF_TRUE':
-                        opname = 'LOAD_ASSERT'
-                except AttributeError:
-                    pass
+                if offset in self.load_asserts:
+                    opname = 'LOAD_ASSERT'
             elif op == RETURN_VALUE:
                 if offset in self.return_end_ifs:
                     opname = 'RETURN_END_IF'
@@ -751,6 +753,11 @@ class Scanner:
                         self.fixed_jumps[pos] = match[-1]
                         return
             else: # op == PJIT
+                if (pos+3) in self.load_asserts:
+                    if code[pre[rtarget]] == RAISE_VARARGS:
+                        return
+                    self.load_asserts.remove(pos+3)
+                    
                 next = self.next_stmt[pos]
                 if pre[next] == pos:
                     pass
@@ -759,10 +766,15 @@ class Scanner:
                         if code[next] == JF or target != rtarget or code[pre[pre[rtarget]]] not in (JA, RETURN_VALUE):
                             self.fixed_jumps[pos] = pre[next]
                             return
-                elif code[next] == JA and code[target] in (JA, JF) \
-                      and self.get_target(target) == self.get_target(next):
-                    self.fixed_jumps[pos] = pre[next]
-                    return
+                elif code[next] == JA and code[target] in (JA, JF):
+                    next_target = self.get_target(next)
+                    if self.get_target(target) == next_target:
+                        self.fixed_jumps[pos] = pre[next]
+                        return
+                    elif code[next_target] in (JA, JF) and self.get_target(next_target) == self.get_target(target):
+                        self.fixed_jumps[pos] = pre[next]
+                        return
+                    
             
             #don't add a struct for a while test, it's already taken care of
             if pos in self.ignore_if:

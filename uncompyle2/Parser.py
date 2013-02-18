@@ -351,9 +351,15 @@ class Parser(GenericASTBuilder):
         continue_stmts ::= lastl_stmt continue_stmt
         continue_stmts ::= continue_stmt
         
-        stmt ::= raise_stmt
-        raise_stmt ::= exprlist RAISE_VARARGS
-        raise_stmt ::= nullexprlist RAISE_VARARGS
+        stmt ::= raise_stmt0
+        stmt ::= raise_stmt1
+        stmt ::= raise_stmt2
+        stmt ::= raise_stmt3
+
+        raise_stmt0 ::= RAISE_VARARGS_0
+        raise_stmt1 ::= expr RAISE_VARARGS_1
+        raise_stmt2 ::= expr expr RAISE_VARARGS_2
+        raise_stmt3 ::= expr expr expr RAISE_VARARGS_3
         
         stmt ::= exec_stmt
         exec_stmt ::= expr exprlist DUP_TOP EXEC_STMT
@@ -401,10 +407,10 @@ class Parser(GenericASTBuilder):
         classdefdeco2 ::= LOAD_CONST expr mkfunc CALL_FUNCTION_0 BUILD_CLASS
 
         assert ::= assert_expr POP_JUMP_IF_TRUE
-                LOAD_ASSERT RAISE_VARARGS
+                LOAD_ASSERT RAISE_VARARGS_1
                 
         assert2 ::= assert_expr POP_JUMP_IF_TRUE
-                LOAD_ASSERT expr CALL_FUNCTION_1 RAISE_VARARGS
+                LOAD_ASSERT expr CALL_FUNCTION_1 RAISE_VARARGS_1
                 
         assert_expr ::= expr
         assert_expr ::= assert_expr_or
@@ -550,7 +556,6 @@ class Parser(GenericASTBuilder):
         expr ::= LOAD_FAST
         expr ::= LOAD_NAME
         expr ::= LOAD_CONST
-        expr ::= LOAD_ASSERT
         expr ::= LOAD_GLOBAL
         expr ::= LOAD_DEREF
         expr ::= LOAD_LOCALS
@@ -749,7 +754,7 @@ def parse(tokens, customize):
             rule = 'unpack ::= ' + k + ' designator'*v
         elif op == 'UNPACK_LIST':
             rule = 'unpack_list ::= ' + k + ' designator'*v
-        elif op == 'DUP_TOPX':
+        elif op in ('DUP_TOPX', 'RAISE_VARARGS'):
             # no need to add a rule
             continue
             #rule = 'dup_topx ::= ' + 'expr '*v + k
