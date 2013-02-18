@@ -238,8 +238,11 @@ TABLE_DIRECT = {
     'call_stmt':	( '%|%p\n', (0,200)),
     'break_stmt':	( '%|break\n', ),
     'continue_stmt':	( '%|continue\n', ),
-    'jcontinue_stmt':	( '%|continue\n', ),
-    'raise_stmt':	( '%|raise %[0]C\n', (0,sys.maxint,', ') ),
+
+    'raise_stmt0':	( '%|raise\n', ),
+    'raise_stmt1':	( '%|raise %c\n', 0),
+    'raise_stmt2':	( '%|raise %c, %c\n', 0, 1),
+    'raise_stmt3':	( '%|raise %c, %c, %c\n', 0, 1, 2),
 #    'yield':	( 'yield %c', 0),
 #    'return_stmt':	( '%|return %c\n', 0),
 
@@ -1083,6 +1086,11 @@ class Walker(GenericASTTraversal, object):
         for n in node[-3:]:
             if n[0] == 'unpack':
                 n[0].type = 'unpack_w_parens'
+        self.default(node)
+        
+    def n_except_cond2(self, node):
+        if node[5][0] == 'unpack':
+            node[5][0].type = 'unpack_w_parens'
         self.default(node)
 
     def engine(self, entry, startnode):
