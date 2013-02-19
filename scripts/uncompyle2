@@ -117,7 +117,7 @@ if __name__ == '__main__': ## for Windows multiprocessing
         elif opt == '-s':
             strip_common_path = 1
         elif opt == '--py':
-            name_modification_function = lambda x: os.path.splitext(x)[0]+'.py'
+            py = 1
         else:
             print opt
             print Usage_short
