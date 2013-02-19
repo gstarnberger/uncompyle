@@ -4,12 +4,12 @@
 # Copyright (c) 2000-2002 by hartmut Goebel <h.goebel@crazy-compilers.com>
 #
 """
-Usage: uncompyle [OPTIONS]... [ FILE | DIR]...
+Usage: uncompyle2 [OPTIONS]... [ FILE | DIR]...
 
 Examples:
-  uncompyle      foo.pyc bar.pyc       # uncompyle foo.pyc, bar.pyc to stdout
-  uncompyle -o . foo.pyc bar.pyc       # uncompyle to ./foo.dis and ./bar.dis
-  uncompyle -o /tmp /usr/lib/python1.5 # uncompyle whole library
+  uncompyle2      foo.pyc bar.pyc       # decompile foo.pyc, bar.pyc to stdout
+  uncompyle2 -o . foo.pyc bar.pyc       # decompile to ./foo.dis and ./bar.dis
+  uncompyle2 -o /tmp /usr/lib/python1.5 # decompile whole library
 
 Options:
   -o <path>     output decompiled files to this path:
@@ -20,12 +20,16 @@ Options:
                     -> /tmp/fasel.dis, /tmp/foo.dis
                   uncompyle -o /tmp bla/fasel.pyc bar/foo.pyc
                     -> /tmp/bla/fasel.dis, /tmp/bar/foo.dis
+  -s            if multiple input files are decompiled, the common prefix
+                is stripped from these names and the remainder appended to
+                <path>
                   uncompyle -o /tmp /usr/lib/python1.5
                     -> /tmp/smtplib.dis ... /tmp/lib-tk/FixTk.dis
   -c <file>     attempts a disassembly after compiling <file>
   -d            do not print timestamps
   -m            use multiprocessing
-  -r            recurse directories looking for .pyc and .pyo files
+  --py          use '.py' extension for generated files
+  --norecur     don't recurse directories looking for .pyc and .pyo files
   --verify      compare generated source with input byte-code
                 (requires -o)
   --help        show this message
@@ -35,13 +39,14 @@ Debugging Options:
   --showast   -t  include AST (abstract syntax tree) (disables --verify)
 
 Extensions of generated files:
-  '.dis'             successfully decompiled (and verified if --verify)
-  '.dis_unverified'  successfully decompile but --verify failed
-  '.nodis'           uncompyle failed (contact author for enhancement)
+  '.pyc_dis' '.pyo_dis'   successfully decompiled (and verified if --verify)
+  '.py'                   with --py option
+    + '_unverified'       successfully decompile but --verify failed
+    + '_failed'           uncompyle failed (contact author for enhancement)
 """
 
 Usage_short = \
-"decomyple [--help] [--verify] [--showasm] [--showast] [-o <path>] FILE|DIR..."
+"uncompyle2 [--help] [--verify] [--showasm] [--showast] [-o <path>] FILE|DIR..."
 
 import sys, os, getopt
 from uncompyle2 import main, verify
@@ -49,7 +54,7 @@ import time
 from multiprocessing import Process, Queue, cpu_count
 from Queue import Empty
 
-def process_func(fq, rq, src_base, out_base, codes, outfile, showasm, showast, do_verify):
+def process_func(fq, rq, src_base, out_base, codes, outfile, showasm, showast, do_verify, py):
     try:
         (tot_files, okay_files, failed_files, verify_failed_files) = (0,0,0,0)
         while 1:
@@ -57,7 +62,7 @@ def process_func(fq, rq, src_base, out_base, codes, outfile, showasm, showast, d
             if f == None:
                 break
             (t, o, f, v) = \
-                main(src_base, out_base, [f], codes, outfile, showasm, showast, do_verify)
+                main(src_base, out_base, [f], codes, outfile, showasm, showast, do_verify, py)
             tot_files += t
             okay_files += o
             failed_files += f
@@ -73,7 +78,7 @@ if __name__ == '__main__': ## for Windows multiprocessing
         print >>sys.stderr, 'Error:  uncompyle2 requires Python 2.7.'
         sys.exit(-1)
         
-    showasm = showast = do_verify = multi = recurse_dirs = 0
+    showasm = showast = do_verify = multi = norecur = strip_common_path = py = 0
     outfile = '-'
     out_base = None
     codes = []
@@ -81,8 +86,8 @@ if __name__ == '__main__': ## for Windows multiprocessing
     timestampfmt = "# %Y.%m.%d %H:%M:%S %Z"
 
     try:
-        opts, files = getopt.getopt(sys.argv[1:], 'hatdrmo:c:',
-                               ['help', 'verify', 'showast', 'showasm'])
+        opts, files = getopt.getopt(sys.argv[1:], 'hatdrmso:c:',
+                               ['help', 'verify', 'showast', 'showasm', 'norecur', 'py'])
     except getopt.GetoptError, e:
         print >>sys.stderr, '%s: %s' % (os.path.basename(sys.argv[0]), e)
         sys.exit(-1)    
@@ -107,15 +112,19 @@ if __name__ == '__main__': ## for Windows multiprocessing
             codes.append(val)
         elif opt == '-m':
             multi = 1
-        elif opt == '-r':
-            recurse_dirs = 1
+        elif opt == '--norecur':
+            norecur = 1
+        elif opt == '-s':
+            strip_common_path = 1
+        elif opt == '--py':
+            name_modification_function = lambda x: os.path.splitext(x)[0]+'.py'
         else:
             print opt
             print Usage_short
             sys.exit(1)
 
     # expand directory if specified
-    if recurse_dirs:
+    if not norecur:
         expanded_files = []
         for f in files:
             if os.path.isdir(f):
@@ -128,13 +137,16 @@ if __name__ == '__main__': ## for Windows multiprocessing
     # argl, commonprefix works on strings, not on path parts,
     # thus we must handle the case with files in 'some/classes'
     # and 'some/cmds'
-    src_base = os.path.commonprefix(files)
-    if src_base[-1:] != os.sep:
-        src_base = os.path.dirname(src_base)
-    if src_base:
-        sb_len = len( os.path.join(src_base, '') )
-        files = map(lambda f: f[sb_len:], files)
-        del sb_len
+    if strip_common_path:
+        src_base = os.path.commonprefix(files)
+        if src_base[-1:] != os.sep:
+            src_base = os.path.dirname(src_base)
+        if src_base:
+            sb_len = len( os.path.join(src_base, '') )
+            files = map(lambda f: f[sb_len:], files)
+            del sb_len
+    else:
+        src_base = ''
         
     if outfile == '-':
         outfile = None # use stdout
@@ -147,7 +159,8 @@ if __name__ == '__main__': ## for Windows multiprocessing
         print time.strftime(timestampfmt)
     if not multi:
         try:
-            result = main(src_base, out_base, files, codes, outfile, showasm, showast, do_verify)
+            result = main(src_base, out_base, files, codes, outfile,
+                          showasm, showast, do_verify, py)
             print '# decompiled %i files: %i okay, %i failed, %i verify failed' % result
         except (KeyboardInterrupt):
             pass
@@ -164,8 +177,9 @@ if __name__ == '__main__': ## for Windows multiprocessing
         rqueue = Queue(numproc)
         
         try:
-            procs = [Process(target=process_func, \
-                             args=(fqueue, rqueue, src_base, out_base, codes, outfile, showasm, showast, do_verify)) \
+            procs = [Process(target=process_func,
+                             args=(fqueue, rqueue, src_base, out_base, codes, outfile,
+                                   showasm, showast, do_verify, py))
                      for i in range(numproc)]
             for p in procs:
                 p.start()

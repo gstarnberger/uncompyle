@@ -141,7 +141,7 @@ else:
         return ''
 
 def main(in_base, out_base, files, codes, outfile=None,
-         showasm=0, showast=0, do_verify=0):
+         showasm=0, showast=0, do_verify=0, py=0):
     """
     in_base	base directory for input files
     out_base	base directory for output files (ignored when
@@ -182,7 +182,11 @@ def main(in_base, out_base, files, codes, outfile=None,
         elif out_base is None:
             outstream = sys.stdout
         else:
-            outfile = os.path.join(out_base, file) + '_dis'
+            outfile = os.path.join(out_base, file)
+            if py:
+                outfile = outfile[:-1]
+            else:
+                outfile += '_dis'
             outstream = _get_outstream(outfile)
         #print >>sys.stderr, outfile 
 
