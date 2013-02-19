@@ -821,12 +821,12 @@ class Scanner:
 
         elif op in (JUMP_IF_FALSE_OR_POP, JUMP_IF_TRUE_OR_POP):
             target = self.get_target(pos, op)
-            if target > pos:
-                unop_target = self.last_instr(pos, target, JF, target)
-                if unop_target and code[unop_target+3] != ROT_TWO:
-                    self.fixed_jumps[pos] = unop_target
-                else:
-                    self.fixed_jumps[pos] = self.restrict_to_parent(target, parent)
+#            if target > pos:
+#                unop_target = self.last_instr(pos, target, JF, target)
+#                if unop_target and code[unop_target+3] != ROT_TWO:
+#                    self.fixed_jumps[pos] = unop_target
+#                else:
+            self.fixed_jumps[pos] = self.restrict_to_parent(target, parent)
                 
                 
              
