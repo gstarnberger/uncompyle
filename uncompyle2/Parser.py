@@ -412,6 +412,9 @@ class Parser(GenericASTBuilder):
         assert2 ::= assert_expr POP_JUMP_IF_TRUE
                 LOAD_ASSERT expr CALL_FUNCTION_1 RAISE_VARARGS_1
                 
+        assert2 ::= assert_expr POP_JUMP_IF_TRUE
+                LOAD_ASSERT expr RAISE_VARARGS_2
+                
         assert_expr ::= expr
         assert_expr ::= assert_expr_or
         assert_expr ::= assert_expr_and
