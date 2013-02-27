@@ -49,6 +49,9 @@ Usage_short = \
 "uncompyle2 [--help] [--verify] [--showasm] [--showast] [-o <path>] FILE|DIR..."
 
 import sys, os, getopt
+if sys.version[:3] != '2.7':
+	print >>sys.stderr, 'Error:  uncompyle2 requires Python 2.7.'
+	sys.exit(-1)
 from uncompyle2 import main, verify
 import time
 from multiprocessing import Process, Queue, cpu_count
@@ -73,10 +76,6 @@ def process_func(fq, rq, src_base, out_base, codes, outfile, showasm, showast, d
     rq.close()
 
 if __name__ == '__main__': ## for Windows multiprocessing 
-
-    if sys.version[:3] != '2.7':
-        print >>sys.stderr, 'Error:  uncompyle2 requires Python 2.7.'
-        sys.exit(-1)
         
     showasm = showast = do_verify = multi = norecur = strip_common_path = py = 0
     outfile = '-'
@@ -132,6 +131,8 @@ if __name__ == '__main__': ## for Windows multiprocessing
                     for df in dir_files:
                         if df.endswith('.pyc') or df.endswith('.pyo'):
                             expanded_files.append(os.path.join(root, df))
+            else:
+                expanded_files.append(f)
         files = expanded_files
 
     # argl, commonprefix works on strings, not on path parts,
