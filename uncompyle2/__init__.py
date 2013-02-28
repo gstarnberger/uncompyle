@@ -117,6 +117,8 @@ def uncompyle(version, co, out=None, showasm=0, showast=0):
     walker.gen_source(ast, customize)
     for g in walker.mod_globs:
         walker.write('global %s ## Warning: Unused global\n' % g)
+    if walker.pending_newlines:
+        print >>__real_out
     if walker.ERROR:
         raise walker.ERROR
 
