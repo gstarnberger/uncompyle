@@ -102,7 +102,14 @@ class Scanner:
         customize = {}
         Token = self.Token # shortcut
         self.code = code = array('B', co.co_code)
+
         n = len(code)
+        for i in self.op_range(0, len(code)):
+            if code[i] in (RETURN_VALUE, END_FINALLY):
+                n = i + 1
+
+        self.code = code = array('B', co.co_code[:n])
+        
         self.prev = [0]
         for i in self.op_range(0, n):
             op = code[i]
