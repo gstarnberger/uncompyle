@@ -57,7 +57,7 @@ import time
 from multiprocessing import Process, Queue, cpu_count
 from Queue import Empty
 
-def process_func(fq, rq, src_base, out_base, codes, outfile, showasm, showast, do_verify, py):
+def process_func(fq, rq, src_base, out_base, codes, outfile, showasm, showast, do_verify, py, deob):
     try:
         (tot_files, okay_files, failed_files, verify_failed_files) = (0,0,0,0)
         while 1:
@@ -65,7 +65,7 @@ def process_func(fq, rq, src_base, out_base, codes, outfile, showasm, showast, d
             if f == None:
                 break
             (t, o, f, v) = \
-                main(src_base, out_base, [f], codes, outfile, showasm, showast, do_verify, py)
+                main(src_base, out_base, [f], codes, outfile, showasm, showast, do_verify, py, deob)
             tot_files += t
             okay_files += o
             failed_files += f
@@ -77,7 +77,7 @@ def process_func(fq, rq, src_base, out_base, codes, outfile, showasm, showast, d
 
 if __name__ == '__main__': ## for Windows multiprocessing 
         
-    showasm = showast = do_verify = multi = norecur = strip_common_path = py = 0
+    showasm = showast = do_verify = multi = norecur = strip_common_path = py = deob = 0
     outfile = '-'
     out_base = None
     codes = []
@@ -86,7 +86,7 @@ if __name__ == '__main__': ## for Windows multiprocessing
 
     try:
         opts, files = getopt.getopt(sys.argv[1:], 'hatdrmso:c:',
-                               ['help', 'verify', 'showast', 'showasm', 'norecur', 'py'])
+                               ['help', 'verify', 'showast', 'showasm', 'norecur', 'py', 'deob'])
     except getopt.GetoptError, e:
         print >>sys.stderr, '%s: %s' % (os.path.basename(sys.argv[0]), e)
         sys.exit(-1)    
@@ -117,6 +117,8 @@ if __name__ == '__main__': ## for Windows multiprocessing
             strip_common_path = 1
         elif opt == '--py':
             py = 1
+        elif opt == '--deob':
+            deob = 1
         else:
             print opt
             print Usage_short
@@ -161,7 +163,7 @@ if __name__ == '__main__': ## for Windows multiprocessing
     if not multi:
         try:
             result = main(src_base, out_base, files, codes, outfile,
-                          showasm, showast, do_verify, py)
+                          showasm, showast, do_verify, py, deob)
             print '# decompiled %i files: %i okay, %i failed, %i verify failed' % result
         except (KeyboardInterrupt):
             pass
@@ -180,7 +182,7 @@ if __name__ == '__main__': ## for Windows multiprocessing
         try:
             procs = [Process(target=process_func,
                              args=(fqueue, rqueue, src_base, out_base, codes, outfile,
-                                   showasm, showast, do_verify, py))
+                                   showasm, showast, do_verify, py, deob))
                      for i in range(numproc)]
             for p in procs:
                 p.start()

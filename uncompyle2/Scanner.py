@@ -90,25 +90,82 @@ class Scanner:
         
     def resetTokenClass(self):
         self.setTokenClass(Token)
+    
+    def deobfuscate(self, co, linestarts, varnames):
+        n = 0
+        code = self.code
+        for i in self.op_range(0, len(code)):
+            if code[i] in (RETURN_VALUE, END_FINALLY):
+                n = i + 1
+
+        fixed_code = array('B')
+        linestartoffsets = {a:b for (a, b) in linestarts[1:]}
+        newlinestarts = linestarts[0:1]
+        old_to_new = {}
+        new_to_old = {}
+        m = 0
+        for i in self.op_range(0, n):
+            old_to_new[i] = m
+            new_to_old[m] = i
+            if i in linestartoffsets:
+                newlinestarts.append( (m, linestartoffsets[i]) )
+            if code[i] != NOP:
+                fixed_code.append(code[i])                    
+                m += 1
+                if code[i] >= HAVE_ARGUMENT:
+                    fixed_code.append(code[i+1])
+                    fixed_code.append(code[i+2])
+                    m += 2
         
-    def disassemble(self, co, classname=None):
+        self.code = code = fixed_code
+        for i in self.op_range(0, m):
+            if code[i] in dis.hasjrel:
+                #import pdb; pdb.set_trace()
+                old_jump = code[i+1] + code[i+2]*256
+                old_target = new_to_old[i] + 3 + old_jump
+                new_target = old_to_new[old_target]
+                new_jump = new_target - i - 3
+                code[i+1] = new_jump % 256
+                code[i+2] = new_jump // 256
+            if code[i] in dis.hasjabs:
+                old_target = code[i+1] + code[i+2]*256
+                new_target = old_to_new[old_target]
+                code[i+1] = new_target % 256
+                code[i+2] = new_target // 256
+        
+        for i in range(len(varnames)):
+            varnames[i] = 'varnames_%s' % i
+            
+        for i in self.op_range(0, m):
+            if code[i] == IMPORT_NAME and code[i+3] == STORE_FAST:
+                varname_index = code[i+4] + code[i+5]*256
+                name_index = code[i+1] + code[i+2]*256
+                varnames[varname_index] = co.co_names[name_index]
+                
+        
+        return newlinestarts
+        
+        
+    def disassemble(self, co, classname=None, deob=0):
         """
         Disassemble a code object, returning a list of 'Token'.
 
         The main part of this procedure is modelled after
         dis.disassemble().
         """
+        #import pdb; pdb.set_trace()
         rv = []
         customize = {}
         Token = self.Token # shortcut
-        self.code = code = array('B', co.co_code)
+        self.code = array('B', co.co_code)
 
+        linestarts = list(dis.findlinestarts(co))
+        varnames = list(co.co_varnames)
+        if deob:
+            linestarts = self.deobfuscate(co, linestarts, varnames)
+        
+        code = self.code
         n = len(code)
-        for i in self.op_range(0, len(code)):
-            if code[i] in (RETURN_VALUE, END_FINALLY):
-                n = i + 1
-
-        self.code = code = array('B', co.co_code[:n])
         
         self.prev = [0]
         for i in self.op_range(0, n):
@@ -121,7 +178,7 @@ class Scanner:
         self.lines = []
         linetuple = namedtuple('linetuple', ['l_no', 'next'])
         j = 0
-        linestarts = list(dis.findlinestarts(co))
+        
         linestartoffsets = {a for (a, _) in linestarts}
         (prev_start_byte, prev_line_no) = linestarts[0]
         for (start_byte, line_no) in linestarts[1:]:
@@ -143,11 +200,10 @@ class Scanner:
                 
             free = [ unmangle(name) for name in (co.co_cellvars + co.co_freevars) ]
             names = [ unmangle(name) for name in co.co_names ]
-            varnames = [ unmangle(name) for name in co.co_varnames ]
+            varnames = [ unmangle(name) for name in varnames ]
         else:
             free = co.co_cellvars + co.co_freevars
             names = co.co_names
-            varnames = co.co_varnames
 
         self.load_asserts = set()
         for i in self.op_range(0, n):
