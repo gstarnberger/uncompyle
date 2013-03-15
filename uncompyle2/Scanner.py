@@ -592,12 +592,13 @@ class Scanner:
         construct in a try...except...else clause or None if not found.
         """
 
-        except_match = self.first_instr(start, self.lines[start].next, POP_JUMP_IF_FALSE)
-        if except_match:
-            jmp = self.prev[self.get_target(except_match)]
-            self.ignore_if.add(except_match)
-            self.not_continue.add(jmp)
-            return jmp
+        if self.code[start] == DUP_TOP:        
+            except_match = self.first_instr(start, len(self.code), POP_JUMP_IF_FALSE)
+            if except_match:
+                jmp = self.prev[self.get_target(except_match)]
+                self.ignore_if.add(except_match)
+                self.not_continue.add(jmp)
+                return jmp
             
         count_END_FINALLY = 0
         count_SETUP_ = 0
@@ -857,7 +858,6 @@ class Scanner:
                         
             #does the if jump just beyond a jump op, then this is probably an if statement
             if code[pre[rtarget]] in (JA, JF):
-                #import pdb; pdb.set_trace()
                 if_end = self.get_target(pre[rtarget])
                 
                 #is this a loop not an if?
