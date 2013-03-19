@@ -916,6 +916,7 @@ class Walker(GenericASTTraversal, object):
         #assert isinstance(code, Code)
 
         ast = self.build_ast(code._tokens, code._customize)
+        self.customize(code._customize)
         ast = ast[0][0][0]
         
         n = ast[iter_index]
