@@ -693,6 +693,9 @@ class Parser(GenericASTBuilder):
         exprlist ::= expr
 
         nullexprlist ::=
+        
+        expr32 ::= expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr  
+        expr1024 ::= expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 
         '''
 
     def nonterminal(self, nt, args):
@@ -752,7 +755,7 @@ def parse(tokens, customize):
         #nop = lambda self, args: None
         op = k[:string.rfind(k, '_')]
         if op in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SET'):
-            rule = 'build_list ::= ' + 'expr '*v + k
+            rule = 'build_list ::= ' + 'expr1024 '*(v/1024) + 'expr32 '*((v/32)%32) + 'expr '*(v%32) + k
         elif op in ('UNPACK_TUPLE', 'UNPACK_SEQUENCE'):
             rule = 'unpack ::= ' + k + ' designator'*v
         elif op == 'UNPACK_LIST':

@@ -1036,33 +1036,51 @@ class Walker(GenericASTTraversal, object):
         """
         p = self.prec
         self.prec = 100
-        lastnode = node.pop().type
-        if lastnode.startswith('BUILD_LIST'):
+        lastnode = node.pop()
+        lastnodetype = lastnode.type
+        if lastnodetype.startswith('BUILD_LIST'):
             self.write('['); endchar = ']'
-        elif lastnode.startswith('BUILD_TUPLE'):
+        elif lastnodetype.startswith('BUILD_TUPLE'):
             self.write('('); endchar = ')'
-        elif lastnode.startswith('BUILD_SET'):
+        elif lastnodetype.startswith('BUILD_SET'):
             self.write('{'); endchar = '}'
-        elif lastnode.startswith('ROT_TWO'):
+        elif lastnodetype.startswith('ROT_TWO'):
             self.write('('); endchar = ')'
         else:
             raise 'Internal Error: n_build_list expects list or tuple'
         
         self.indentMore(INDENT_PER_LEVEL)
-        if len(node) > 3:
+        if lastnode.attr > 3:
             line_separator = ',\n' + self.indent
         else:
             line_separator = ', '
         sep = INDENT_PER_LEVEL[:-1]
         for elem in node:
-            if (elem == 'ROT_THREE'):
+            if elem == 'ROT_THREE':
                 continue
-
+            if elem == 'expr1024':
+                for subelem in elem:
+                    if subelem == 'expr32':
+                        for subsubelem in subelem:
+                            value = self.traverse(subsubelem)
+                            self.write(sep, value)
+                            sep = line_separator
+                        continue
+                    value = self.traverse(subelem)
+                    self.write(sep, value)
+                    sep = line_separator
+                continue
+            if elem == 'expr32':
+                for subelem in elem:
+                    value = self.traverse(subelem)
+                    self.write(sep, value)
+                    sep = line_separator
+                continue
             assert elem == 'expr'
             value = self.traverse(elem)
             self.write(sep, value)
             sep = line_separator
-        if len(node) == 1 and lastnode.startswith('BUILD_TUPLE'):
+        if lastnode.attr == 1 and lastnodetype.startswith('BUILD_TUPLE'):
             self.write(',')
         self.write(endchar)
         self.indentLess(INDENT_PER_LEVEL)
