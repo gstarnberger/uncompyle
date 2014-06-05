@@ -1049,32 +1049,27 @@ class Walker(GenericASTTraversal, object):
         else:
             raise 'Internal Error: n_build_list expects list or tuple'
         
+        flat_elems = []
+        for elem in node:
+            if elem == 'expr1024':
+                for subelem in elem:
+                        for subsubelem in subelem:
+                            flat_elems.append(subsubelem)
+            elif elem == 'expr32':
+                for subelem in elem:
+                    flat_elems.append(subelem)
+            else:
+                flat_elems.append(elem)
+            
         self.indentMore(INDENT_PER_LEVEL)
         if lastnode.attr > 3:
             line_separator = ',\n' + self.indent
         else:
             line_separator = ', '
         sep = INDENT_PER_LEVEL[:-1]
-        for elem in node:
+        
+        for elem in flat_elems:
             if elem == 'ROT_THREE':
-                continue
-            if elem == 'expr1024':
-                for subelem in elem:
-                    if subelem == 'expr32':
-                        for subsubelem in subelem:
-                            value = self.traverse(subsubelem)
-                            self.write(sep, value)
-                            sep = line_separator
-                        continue
-                    value = self.traverse(subelem)
-                    self.write(sep, value)
-                    sep = line_separator
-                continue
-            if elem == 'expr32':
-                for subelem in elem:
-                    value = self.traverse(subelem)
-                    self.write(sep, value)
-                    sep = line_separator
                 continue
             assert elem == 'expr'
             value = self.traverse(elem)
