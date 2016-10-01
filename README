@@ -1,13 +1,15 @@
 
-                 uncompyle -- A Python 2.7 byte-code decompiler
-                          0.12
-                          2012-1-23
+                          uncompyle
+        A Python 2.7 byte-code decompiler, written in Python 2.7
+                          0.13
+                          2012-2-22
 
 Introduction
 ------------
 
 'uncompyle' converts Python byte-code back into equivalent Python
-source. It accepts byte-code from Python version 2.7 only.
+source. It accepts byte-code from Python version 2.7 only. Additionally,
+it will only run on Python 2.7.
 
 The generated source is very readable: docstrings, lists, tuples and
 hashes get pretty-printed.
@@ -17,13 +19,14 @@ by compiling it and comparing both byte-codes.
 
 'uncompyle' is based on John Aycock's generic small languages compiler
 'spark' (http://www.csr.uvic.ca/~aycock/python/) and his prior work on
-'decompyle'.
+a tool called 'decompyle'. This tool has been vastly improved by
+Hartmut Goebel `http://www.crazy-compilers.com/`_
 
 Additional note (3 July 2004, Ben Burton):
 
-    The original website from which this software was obtained is no longer
-    available.  It has now become a commercial decompilation service, with
-    no software available for download.
+    This software is no longer available from the original website. It
+    has now become a commercial decompilation service, with no
+    software available for download.
 
     Any developers seeking to make alterations or enhancements to this code
     should therefore consider these debian packages an appropriate starting
@@ -51,7 +54,7 @@ Features
 Requirements
 ------------
 
-'decompile' requires Python 2.2 or later.
+uncompyle requires Python 2.7
 
 
 Installation

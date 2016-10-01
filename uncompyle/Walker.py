@@ -1,5 +1,5 @@
 #  Copyright (c) 1999 John Aycock
-#  Copyright (c) 2000-2002 by hartmut Goebel <hartmut@goebel.noris.de>
+#  Copyright (c) 2000-2002 by hartmut Goebel <h.goebel@crazy-compilers.com>
 #  Copyright (c) 2005 by Dan Pascu <dan@windowmaker.org>
 #
 #  See main module for license.
@@ -53,7 +53,7 @@ minint = -sys.maxint-1
 # the end of functions).
 
 RETURN_LOCALS = AST('return_stmt',
-			  [ AST('expr', [ Token('LOAD_LOCALS') ]),
+			  [ AST('ret_expr', [AST('expr', [ Token('LOAD_LOCALS') ])]),
 			    Token('RETURN_VALUE')])
 
 
@@ -94,9 +94,9 @@ TABLE_R = {
     'STORE_ATTR':	( '%c.%[1]{pattr}', 0),
 #   'STORE_SUBSCR':	( '%c[%c]', 0, 1 ),
     'STORE_SLICE+0':	( '%c[:]', 0 ),
-    'STORE_SLICE+1':	( '%c[%c:]', 0, 1 ),
-    'STORE_SLICE+2':	( '%c[:%c]', 0, 1 ),
-    'STORE_SLICE+3':	( '%c[%c:%c]', 0, 1, 2 ),
+    'STORE_SLICE+1':	( '%c[%p:]', 0, (1,100) ),
+    'STORE_SLICE+2':	( '%c[:%p]', 0, (1,100) ),
+    'STORE_SLICE+3':	( '%c[%p:%p]', 0, (1,100), (2,100) ),
     'DELETE_SLICE+0':	( '%|del %c[:]\n', 0 ),
     'DELETE_SLICE+1':	( '%|del %c[%c:]\n', 0, 1 ),
     'DELETE_SLICE+2':	( '%|del %c[:%c]\n', 0, 1 ),
@@ -147,9 +147,9 @@ TABLE_DIRECT = {
     'unary_convert':	( '`%c`', 0 ),
     'get_iter':	( 'iter(%c)', 0 ),
     'slice0':		( '%c[:]', 0 ),
-    'slice1':		( '%c[%c:]', 0, 1 ),
-    'slice2':		( '%c[:%c]', 0, 1 ),
-    'slice3':		( '%c[%c:%c]', 0, 1, 2 ),
+    'slice1':		( '%c[%p:]', 0, (1,100) ),
+    'slice2':		( '%c[:%p]', 0, (1,100) ),
+    'slice3':		( '%c[%p:%p]', 0, (1,100), (2,100) ),
 
     'IMPORT_FROM':	( '%{pattr}', ),
     'load_attr':	( '%c.%[1]{pattr}', 0),
@@ -164,14 +164,15 @@ TABLE_DIRECT = {
     'DELETE_NAME':	( '%|del %{pattr}\n', ),
     'DELETE_GLOBAL':	( '%|del %{pattr}\n', ),
     'delete_subscr':	( '%|del %c[%c]\n', 0, 1,),
-    'binary_subscr':	( '%c[%c]', 0, 1),
-    'binary_subscr2':	( '%c[%c]', 0, 1),
+    'binary_subscr':	( '%c[%p]', 0, (1,100)),
+    'binary_subscr2':	( '%c[%p]', 0, (1,100)),
     'store_subscr':	( '%c[%c]', 0, 1),
     'STORE_FAST':	( '%{pattr}', ),
     'STORE_NAME':	( '%{pattr}', ),
     'STORE_GLOBAL':	( '%{pattr}', ),
     'STORE_DEREF':	( '%{pattr}', ),
-    'unpack':		( '(%C,)', (1, sys.maxint, ', ') ),
+    'unpack':		( '%C%,', (1, sys.maxint, ', ') ),
+    'unpack_w_parens':		( '(%C%,)', (1, sys.maxint, ', ') ),
     'unpack_list':	( '[%C]', (1, sys.maxint, ', ') ),
     'build_tuple2':	( '%P', (0,-1,', ', 100) ),
 
@@ -197,41 +198,38 @@ TABLE_DIRECT = {
 #   'dup_topx':		( '%c', 0),
     'designList':	( '%c = %c', 0, -1 ),
     'and':          	( '%c and %c', 0, 2 ),
+    'ret_and':        	( '%c and %c', 0, 2 ),
     'and2':          	( '%c', 3 ),
     'or':           	( '%c or %c', 0, 2 ),
-    'conditional':  ( '%p if %p else %p', (2,100), (0,100), (4,100)),
-    'conditionaland':  ( '%p if %p and %p else %p', (4,100), (0,24), (2,24), (6,100)),
-    'conditionalnot':  ( '%p if not %p else %p', (2,100), (0,22), (4,100)),
+    'ret_or':           	( '%c or %c', 0, 2 ),
+    'conditional':  ( '%p if %p else %p', (2,27), (0,27), (4,27)),
+    'ret_cond':     ( '%p if %p else %p', (2,27), (0,27), (4,27)),
+    'conditionalnot':  ( '%p if not %p else %p', (2,27), (0,22), (4,27)),
+    'ret_cond_not':  ( '%p if not %p else %p', (2,27), (0,22), (4,27)),
     'conditional_lambda':  ( '(%c if %c else %c)', 2, 0, 3),
-    'conditional_lambda2':  ( '(%c if %p and %p else %c)', 4, (0,24), (2,24), 5),
     'return_lambda':    ('%c', 0),
-    'compare':		( '%c %[-1]{pattr} %c', 0, 1 ),
-    'cmp_list':		( '%c %c', 0, 1),
-    'cmp_list1':	( '%[3]{pattr} %c %c', 0, -2),
-    'cmp_list2':	( '%[1]{pattr} %c', 0),
+    'compare':		( '%p %[-1]{pattr} %p', (0,19), (1,19) ),
+    'cmp_list':		( '%p %p', (0,20), (1,19)),
+    'cmp_list1':	( '%[3]{pattr} %p %p', (0,19), (-2,19)),
+    'cmp_list2':	( '%[1]{pattr} %p', (0,19)),
 #   'classdef': 	(), # handled by n_classdef()
-    'funcdef':  	( '\n%|def %c\n', -2), # -2 to handle closures
-    'funcdefdeco':  	( '%c', 0), 
-    'mkfuncdeco':  	( '\n%|@%c%c', 0, 1), 
-    'mkfuncdeco0':  	( '\n%|def %c\n', 0), 
+    'funcdef':  	( '\n\n%|def %c\n', -2), # -2 to handle closures
+    'funcdefdeco':  	( '\n\n%c', 0), 
+    'mkfuncdeco':  	( '%|@%c\n%c', 0, 1), 
+    'mkfuncdeco0':  	( '%|def %c\n', 0), 
     'classdefdeco':  	( '%c', 0), 
-    'classdefdeco1':  	( '\n%|@%c%c', 0, 1), 
+    'classdefdeco1':  	( '\n\n%|@%c%c', 0, 1), 
     'kwarg':    	( '%[0]{pattr}=%c', 1),
-    'importstmt':	( '%|import %[0]{pattr}\n', ),
-    'importfrom':	( '%|from %[0]{pattr} import %c\n', 1 ),
-    'importlist':	( '%C', (0, sys.maxint, ', ') ),
-    'importstmt2':	( '%|import %c\n', 1),
-    'importstar2':	( '%|from %[1]{pattr} import *\n', ),
-    'importfrom2':	( '%|from %[1]{pattr} import %c\n', 2 ),
     'importlist2':	( '%C', (0, sys.maxint, ', ') ),
     
     'assert':		( '%|assert %c\n' , 0 ),
     'assert2':		( '%|assert %c, %c\n' , 0, 3 ),
     'assert_expr_or': ( '%c or %c', 0, 2 ),
     'assert_expr_and':    ( '%c and %c', 0, 2 ),
-    'print_stmt':	( '%|print %c,\n', 0 ),
-    'print_stmt_nl':	( '%|print %[0]C\n', (0,1, None) ),
-    'print_nl_stmt':	( '%|print\n', ),
+    'print_items_stmt': ( '%|print %c%c,\n', 0, 2),
+    'print_items_nl_stmt': ( '%|print %c%c\n', 0, 2),
+    'print_item':  ( ', %c', 0),
+    'print_nl':	( '%|print\n', ),
     'print_to':		( '%|print >> %c, %c,\n', 0, 1 ),
     'print_to_nl':	( '%|print >> %c, %c\n', 0, 1 ),
     'print_nl_to':	( '%|print >> %c\n', 0 ),
@@ -240,8 +238,11 @@ TABLE_DIRECT = {
     'call_stmt':	( '%|%p\n', (0,200)),
     'break_stmt':	( '%|break\n', ),
     'continue_stmt':	( '%|continue\n', ),
-    'jcontinue_stmt':	( '%|continue\n', ),
-    'raise_stmt':	( '%|raise %[0]C\n', (0,sys.maxint,', ') ),
+
+    'raise_stmt0':	( '%|raise\n', ),
+    'raise_stmt1':	( '%|raise %c\n', 0),
+    'raise_stmt2':	( '%|raise %c, %c\n', 0, 1),
+    'raise_stmt3':	( '%|raise %c, %c, %c\n', 0, 1, 2),
 #    'yield':	( 'yield %c', 0),
 #    'return_stmt':	( '%|return %c\n', 0),
 
@@ -251,40 +252,38 @@ TABLE_DIRECT = {
     'testtrue':     ( 'not %p', (0,22) ),
     
     'ifelsestmt':	( '%|if %c:\n%+%c%-%|else:\n%+%c%-', 0, 1, 3 ),
+    'ifelsestmtc':	( '%|if %c:\n%+%c%-%|else:\n%+%c%-', 0, 1, 3 ),
     'ifelsestmtl':	( '%|if %c:\n%+%c%-%|else:\n%+%c%-', 0, 1, 3 ),
     'ifelifstmt':	( '%|if %c:\n%+%c%-%c', 0, 1, 3 ),
     'elifelifstmt':	( '%|elif %c:\n%+%c%-%c', 0, 1, 3 ),
     'elifstmt':		( '%|elif %c:\n%+%c%-', 0, 1 ),
     'elifelsestmt':	( '%|elif %c:\n%+%c%-%|else:\n%+%c%-', 0, 1, 3 ),
     'ifelsestmtr':	( '%|if %c:\n%+%c%-%|else:\n%+%c%-', 0, 1, 2 ),
+    'elifelsestmtr':	( '%|elif %c:\n%+%c%-%|else:\n%+%c%-\n\n', 0, 1, 2 ),
 
-    'whilestmt':	( '%|while %c:\n%+%c%-\n', 1, 2 ),
-    'while1stmt':	( '%|while 1:\n%+%c%-\n', 1 ),
-    'whileelsestmt':	( '%|while %c:\n%+%c%-%|else:\n%+%c%-\n', 1, 2, -2 ),
-    'whileelselaststmt':	( '%|while %c:\n%+%c%-%|else:\n%+%c%-\n', 1, 2, -2 ),
-    'forstmt':		( '%|for %c in %c:\n%+%c%-\n', 3, 1, 4 ),
+    'whilestmt':	( '%|while %c:\n%+%c%-\n\n', 1, 2 ),
+    'while1stmt':	( '%|while 1:\n%+%c%-\n\n', 1 ),
+    'while1elsestmt':	( '%|while 1:\n%+%c%-%|else:\n%+%c%-\n\n', 1, 3 ),
+    'whileelsestmt':	( '%|while %c:\n%+%c%-%|else:\n%+%c%-\n\n', 1, 2, -2 ),
+    'whileelselaststmt':	( '%|while %c:\n%+%c%-%|else:\n%+%c%-', 1, 2, -2 ),
+    'forstmt':		( '%|for %c in %c:\n%+%c%-\n\n', 3, 1, 4 ),
     'forelsestmt':	(
-        '%|for %c in %c:\n%+%c%-%|else:\n%+%c%-\n', 3, 1, 4, -2),
+        '%|for %c in %c:\n%+%c%-%|else:\n%+%c%-\n\n', 3, 1, 4, -2),
     'forelselaststmt':	(
         '%|for %c in %c:\n%+%c%-%|else:\n%+%c%-', 3, 1, 4, -2),
-    'trystmt':		( '%|try:\n%+%c%-%c', 1, 5 ),
-    'c_trystmt':		( '%|try:\n%+%c%-%c', 1, 5 ),
-    'tf_trystmt':		( '%c%-%c%+', 1, 5 ),
+    'forelselaststmtl':	(
+        '%|for %c in %c:\n%+%c%-%|else:\n%+%c%-\n\n', 3, 1, 4, -2),
+    'trystmt':		( '%|try:\n%+%c%-%c\n\n', 1, 3 ),
+    'tryelsestmt':		( '%|try:\n%+%c%-%c%|else:\n%+%c%-\n\n', 1, 3, 4 ),
+    'tryelsestmtc':		( '%|try:\n%+%c%-%c%|else:\n%+%c%-', 1, 3, 4 ),
+    'tryelsestmtl':		( '%|try:\n%+%c%-%c%|else:\n%+%c%-', 1, 3, 4 ),
+    'tf_trystmt':		( '%c%-%c%+', 1, 3 ),
+    'tf_tryelsestmt':		( '%c%-%c%|else:\n%+%c', 1, 3, 4 ),
     'except':		( '%|except:\n%+%c%-', 3 ),
-    'except2':		( '%|except:\n%+%c%-', 3 ),
     'except_cond1':	( '%|except %c:\n', 1 ),
     'except_cond2':	( '%|except %c as %c:\n', 1, 5 ),
-    'except_sub_stmts':     ( '%+%c%-%C', 0, (1, sys.maxint, '') ),
-    'except_sub_stmts_a':     ( '%+%c%-%C', 0, (1, sys.maxint, '') ),
-    'c_except_sub_stmts':   ( '%+%c%-%C', 0, (1, sys.maxint, '') ),
-    'c_except_sub_stmts2':  ( '%+%c%-%C', 0, (1, sys.maxint, '') ),
-    'c_except_sub_stmts_a':   ( '%+%c%-%C', 0, (1, sys.maxint, '') ),
-    'c_except_sub_stmts2_a':  ( '%+%c%-%C', 0, (1, sys.maxint, '') ),
-    'except_cond_cont': ( '%c%+%|continue\n%-', 0),
-    'except_else':	( '%|else:\n%+%c%-', 2 ),
-    'except_else2':	( '%|else:\n%+%c%-', 1 ),
-    'except_else3':	( '%|else:\n%+%c%-', 2 ),
-    'tryfinallystmt':	( '%|try:\n%+%c%-%|finally:\n%+%c%-', 1, 5 ),
+    'except_suite':     ( '%+%c%-%C', 0, (1, sys.maxint, '') ),
+    'tryfinallystmt':	( '%|try:\n%+%c%-%|finally:\n%+%c%-\n\n', 1, 5 ),
     'withstmt':     ( '%|with %c:\n%+%c%-', 0, 3),
     'withasstmt':   ( '%|with %c as %c:\n%+%c%-', 0, 2, 3),
     'passstmt':		( '%|pass\n', ),
@@ -298,13 +297,15 @@ TABLE_DIRECT = {
     ##
     
     # Import style for 2.5
-    '_25_importstmt': ( '%|import %c\n', 2),
-    '_25_importstar': ( '%|from %[2]{pattr} import *\n', ),
-    '_25_importfrom': ( '%|from %[2]{pattr} import %c\n', 3 ),
+    'importstmt': ( '%|import %c\n', 2),
+    'importstar': ( '%|from %[2]{pattr} import *\n', ),
+    'importfrom': ( '%|from %[2]{pattr} import %c\n', 3 ),
+    'importmultiple': ( '%|import %c%c\n', 2, 3),
+    'import_cont'   : ( ', %c', 2),
     
     # CE - Fixes for tuples
-    '_25_assign2':     ( '%|(%c, %c,) = (%c, %c)\n', 3, 4, 0, 1 ),
-    '_25_assign3':     ( '%|(%c, %c, %c,) = (%c, %c, %c)\n', 5, 6, 7, 0, 1, 2 ),
+    'assign2':     ( '%|%c, %c = %c, %c\n', 3, 4, 0, 1 ),
+    'assign3':     ( '%|%c, %c, %c = %c, %c, %c\n', 5, 6, 7, 0, 1, 2 ),
 
 }
 
@@ -368,12 +369,15 @@ PRECEDENCE = {
     'unary_not':            22,
     
     'and':                  24,
+    'ret_and':              24,
     
     'or':                   26,
+    'ret_or':               26,
     
     'conditional':          28,
-    'conditionaland':       28,
     'conditionalnot':       28,
+    'ret_cond':             28,
+    'ret_cond_not':         28,
     
     '_mklambda':            30,
     'yield':                101
@@ -422,7 +426,7 @@ def find_all_globals(node, globs):
 def find_none(node):
     for n in node:
         if isinstance(n, AST):
-            if not (n == 'return_stmt'): 
+            if not (n == 'return_stmt' or n == 'return_if_stmt'): 
                 if find_none(n):
                     return True
         elif n.type == 'LOAD_CONST' and n.pattr == None:
@@ -447,6 +451,7 @@ class Walker(GenericASTTraversal, object):
         self.return_none = False
         self.mod_globs = set()
         self.currentclass = None
+        self.pending_newlines = 0
 
     f = property(lambda s: s.__params['f'],
                  lambda s, x: s.__params.__setitem__('f', x),
@@ -476,6 +481,8 @@ class Walker(GenericASTTraversal, object):
     def traverse(self, node, indent=None, isLambda=0):
         self.__param_stack.append(self.__params)
         if indent is None: indent = self.indent
+        p = self.pending_newlines
+        self.pending_newlines = 0
         self.__params = {
             '_globals': {},
             'f': cStringIO.StringIO(),
@@ -483,21 +490,49 @@ class Walker(GenericASTTraversal, object):
             'isLambda': isLambda,
             }
         self.preorder(node)
+        self.f.write('\n'*self.pending_newlines)
         result = self.f.getvalue()
         self.__params = self.__param_stack.pop()
+        self.pending_newlines = p
         return result
     
     def write(self, *data):
-        if type(data) == ListType:
-            self.f.writelines(data)
-        elif type(data) == TupleType:
-            self.f.writelines(list(data))
-        else:
-            self.f.write(data)
+        if (len(data) == 0) or (len(data) == 1 and data[0] == ''):
+            return
+#        import pdb; pdb.set_trace()
+        out = ''.join((str(j) for j in data))
+        n = 0
+        for i in out:
+            if i == '\n':
+                n += 1
+                if n == len(out):
+                    self.pending_newlines = max(self.pending_newlines, n)
+                    return
+            elif n:
+                self.pending_newlines = max(self.pending_newlines, n)
+                out = out[n:]
+                break
+            else:
+                break
+                
+        if self.pending_newlines > 0:
+            self.f.write('\n'*self.pending_newlines)
+            self.pending_newlines = 0
+                
+        for i in out[::-1]:
+            if i == '\n':
+                self.pending_newlines += 1
+            else:
+                break
+        
+        if self.pending_newlines:
+            out = out[:-self.pending_newlines]
+        self.f.write(out)
 
     def print_(self, *data):
-        self.write(*data)
-        print >> self.f
+        if data and not(len(data) == 1 and data[0] ==''):
+            self.write(*data)
+        self.pending_newlines = max(self.pending_newlines, 1)
 
     def print_docstring(self, indent, docstring):
         quote = '"""'
@@ -539,7 +574,9 @@ class Walker(GenericASTTraversal, object):
         calculate_indent = sys.maxint
         for line in lines[1:]:
             stripped = line.lstrip()
-            calculate_indent = min(calculate_indent, len(line) - len(stripped))
+            if len(stripped) > 0:
+                calculate_indent = min(calculate_indent, len(line) - len(stripped))
+        calculate_indent = min(calculate_indent, len(lines[-1]) - len(lines[-1].lstrip()))
         # Remove indentation (first line is special):
         trimmed = [lines[0]]
         if calculate_indent < sys.maxint:
@@ -562,8 +599,21 @@ class Walker(GenericASTTraversal, object):
             self.preorder(node[0])
             self.prune()
         else:
-            self.write(self.indent, 'return ')
-            if self.return_none or node != AST('return_stmt', [NONE, Token('RETURN_VALUE')]):
+            self.write(self.indent, 'return')
+            if self.return_none or node != AST('return_stmt', [AST('ret_expr', [NONE]), Token('RETURN_VALUE')]):
+                self.write(' ')
+                self.preorder(node[0])
+            self.print_()
+            self.prune() # stop recursing
+        
+    def n_return_if_stmt(self, node):
+        if self.__params['isLambda']:
+            self.preorder(node[0])
+            self.prune()
+        else:
+            self.write(self.indent, 'return')
+            if self.return_none or node != AST('return_stmt', [AST('ret_expr', [NONE]), Token('RETURN_END_IF')]):
+                self.write(' ')
                 self.preorder(node[0])
             self.print_()
             self.prune() # stop recursing
@@ -576,6 +626,8 @@ class Walker(GenericASTTraversal, object):
         self.prune() # stop recursing
 
     def n_buildslice3(self, node):
+        p = self.prec
+        self.prec = 100
         if node[0] != NONE:
             self.preorder(node[0])
         self.write(':')
@@ -584,14 +636,18 @@ class Walker(GenericASTTraversal, object):
         self.write(':')
         if node[2] != NONE:
             self.preorder(node[2])
+        self.prec = p
         self.prune() # stop recursing
 
     def n_buildslice2(self, node):
+        p = self.prec
+        self.prec = 100
         if node[0] != NONE:
             self.preorder(node[0])
         self.write(':')
         if node[1] != NONE:
             self.preorder(node[1])
+        self.prec = p
         self.prune() # stop recursing
 
 #    def n_l_stmts(self, node):
@@ -608,6 +664,8 @@ class Walker(GenericASTTraversal, object):
         else:
             n = node[0]
         self.prec = PRECEDENCE.get(n,-2)
+        if n == 'LOAD_CONST' and repr(n.pattr)[0] == '-':
+            self.prec = 6
         if p < self.prec:
             self.write('(')
             self.preorder(node[0])
@@ -617,6 +675,14 @@ class Walker(GenericASTTraversal, object):
         self.prec = p
         self.prune()
         
+    def n_ret_expr(self, node):
+        if len(node) == 1 and node[0] == 'expr':
+            self.n_expr(node[0])
+        else:
+            self.n_expr(node)
+    
+    n_ret_expr_or_cond = n_expr
+    
     def n_binary_expr(self, node):
         self.preorder(node[0])
         self.write(' ')
@@ -662,12 +728,11 @@ class Walker(GenericASTTraversal, object):
         
 #    'tryfinallystmt':	( '%|try:\n%+%c%-%|finally:\n%+%c%-', 1, 5 ),
     def n_tryfinallystmt(self, node):
-        if node[1] == 'stmts' and \
-           len(node[1]) == 1 and \
-           node[1][0] == 'sstmt' and \
-           node[1][0][0] == 'stmt' and \
-           node[1][0][0][0] == 'trystmt' or node[1][0][0] == 'c_trystmt':
-            node[1][0][0][0].type = 'tf_trystmt'
+        if len(node[1][0]) == 1 and node[1][0][0] == 'stmt':
+            if node[1][0][0][0] == 'trystmt':
+                node[1][0][0][0].type = 'tf_trystmt'
+            if node[1][0][0][0] == 'tryelsestmt':
+                node[1][0][0][0].type = 'tf_tryelsestmt'
         self.default(node)
         
     def n_exec_stmt(self, node):
@@ -686,40 +751,108 @@ class Walker(GenericASTTraversal, object):
         self.prune() # stop recursing
             
     def n_ifelsestmt(self, node, preprocess=0):
-        if len(node[3]) == 1 and not node[3][0] == 'continue_stmt':
-            ifnode = node[3][0][0][0]
-            if node[3][0] == 'lastc_stmt' and node[3][0][0] == 'iflaststmt':
-                node.type = 'ifelifstmt'
-                node[3][0][0].type = 'elifstmt'
-            elif ifnode == 'ifelsestmt':
-                node.type = 'ifelifstmt'
-                self.n_ifelsestmt(ifnode, preprocess=1)
-                if ifnode == 'ifelifstmt':
-                    ifnode.type = 'elifelifstmt'
-                elif ifnode == 'ifelsestmt':
-                    ifnode.type = 'elifelsestmt'
-            elif ifnode == 'ifstmt':
-                node.type = 'ifelifstmt'
-                ifnode.type = 'elifstmt'
+        n = node[3][0]
+        if len(n) == 1 == len(n[0]) and n[0] == '_stmts':
+            n = n[0][0][0]
+        elif n[0].type in ('lastc_stmt', 'lastl_stmt'):
+            n = n[0][0]
+        else:
+            if not preprocess:
+                self.default(node)
+            return
+        
+        if n.type in ('ifstmt', 'iflaststmt', 'iflaststmtl'):
+            node.type = 'ifelifstmt'
+            n.type = 'elifstmt'
+        elif n.type in ('ifelsestmtr',):
+            node.type = 'ifelifstmt'
+            n.type = 'elifelsestmtr'
+        elif n.type in ('ifelsestmt', 'ifelsestmtc', 'ifelsestmtl'):
+            node.type = 'ifelifstmt'
+            self.n_ifelsestmt(n, preprocess=1)
+            if n == 'ifelifstmt':
+                n.type = 'elifelifstmt'
+            elif n.type in ('ifelsestmt', 'ifelsestmtc', 'ifelsestmtl'):
+                n.type = 'elifelsestmt'
         if not preprocess:
             self.default(node)
             
-    def n_ifelsestmtl(self, node, preprocess=0):
-        if len(node[3]) == 1 and node[3][0] == 'lastl_stmt':
-            ifnode = node[3][0][0]
-            if ifnode == 'ifelsestmtl':
-                node.type = 'ifelifstmt'
-                self.n_ifelsestmtl(ifnode, preprocess=1)
-                if ifnode == 'ifelifstmt':
-                    ifnode.type = 'elifelifstmt'
-                elif ifnode == 'ifelsestmtl':
-                    ifnode.type = 'elifelsestmt'
-            elif ifnode == 'iflaststmtl':
-                node.type = 'ifelifstmt'
-                ifnode.type = 'elifstmt'
-        if not preprocess:
-            self.default(node)
+    n_ifelsestmtc = n_ifelsestmtl = n_ifelsestmt
         
+    def n_ifelsestmtr(self, node):
+        if len(node[2]) != 2:
+            self.default(node)
+
+        if not (node[2][0][0][0] == 'ifstmt' and node[2][0][0][0][1][0] == 'return_if_stmts') \
+                and not (node[2][0][-1][0] == 'ifstmt' and node[2][0][-1][0][1][0] == 'return_if_stmts'):
+            self.default(node)
+            return
+        
+        self.write(self.indent, 'if ')
+        self.preorder(node[0])
+        self.print_(':')
+        self.indentMore()
+        self.preorder(node[1])
+        self.indentLess()
+        
+        if_ret_at_end = False
+        if len(node[2][0]) >= 3:
+            if node[2][0][-1][0] == 'ifstmt' and node[2][0][-1][0][1][0] == 'return_if_stmts':
+                if_ret_at_end = True
+                
+        past_else = False
+        prev_stmt_is_if_ret = True
+        for n in node[2][0]:
+            if (n[0] == 'ifstmt' and n[0][1][0] == 'return_if_stmts'):
+                if prev_stmt_is_if_ret:
+                    n[0].type = 'elifstmt'
+                prev_stmt_is_if_ret = True
+            else:
+                prev_stmt_is_if_ret = False
+                if not past_else and not if_ret_at_end:
+                    self.print_(self.indent, 'else:')
+                    self.indentMore()
+                    past_else = True
+            self.preorder(n)
+        if not past_else or if_ret_at_end:
+            self.print_(self.indent, 'else:')
+            self.indentMore()
+        self.preorder(node[2][1])
+        self.indentLess()
+        self.prune()
+                       
+    def n_elifelsestmtr(self, node):
+        if len(node[2]) != 2:
+            self.default(node)
+
+        for n in node[2][0]:
+            if not (n[0] == 'ifstmt' and n[0][1][0] == 'return_if_stmts'):
+                self.default(node)
+                return
+
+        self.write(self.indent, 'elif ')
+        self.preorder(node[0])
+        self.print_(':')
+        self.indentMore()
+        self.preorder(node[1])
+        self.indentLess()
+        
+        if_ret_at_end = False
+        if len(node[2][0]) >= 3:
+            if node[2][0][-1][0] == 'ifstmt' and node[2][0][-1][0][1][0] == 'return_if_stmts':
+                if_ret_at_end = True
+                
+        past_else = False
+        prev_stmt_is_if_ret = True
+        for n in node[2][0]:
+            n[0].type = 'elifstmt'
+            self.preorder(n)
+        self.print_(self.indent, 'else:')
+        self.indentMore()
+        self.preorder(node[2][1])
+        self.indentLess()
+        self.prune()
+
     def n_import_as(self, node):
         iname = node[0].pattr;
         assert node[-1][-1].type.startswith('STORE_')
@@ -729,11 +862,24 @@ class Walker(GenericASTTraversal, object):
         else:
             self.write(iname, ' as ', sname)
         self.prune() # stop recursing
+    
+    n_import_as_cont = n_import_as
 
+    def n_importfrom(self, node):
+        if node[0].pattr > 0:
+            node[2].pattr = '.'*node[0].pattr+node[2].pattr
+        self.default(node)
+        
+    n_importstar = n_importfrom
+    
     def n_mkfunc(self, node):
         self.write(node[-2].attr.co_name) # = code.co_name
         self.indentMore()
         self.make_function(node, isLambda=0)
+        if len(self.__param_stack) > 1:
+            self.write('\n\n')
+        else:
+            self.write('\n\n\n')
         self.indentLess()
         self.prune() # stop recursing
 
@@ -743,7 +889,7 @@ class Walker(GenericASTTraversal, object):
 
     def n_list_compr(self, node):
         p = self.prec
-        self.prec = 100
+        self.prec = 27
         n = node[-1]
         assert n == 'list_iter'
         # find innerst node
@@ -757,12 +903,12 @@ class Walker(GenericASTTraversal, object):
         self.preorder(n[0]) # lc_body
         self.preorder(node[-1]) # for/if parts
         self.write( ' ]')
-        self.prune() # stop recursing
         self.prec = p
+        self.prune() # stop recursing
     
     def comprehension_walk(self, node, iter_index):
         p = self.prec
-        self.prec = 100
+        self.prec = 27
         code = node[-5].attr
 
         assert type(code) == CodeType
@@ -770,6 +916,7 @@ class Walker(GenericASTTraversal, object):
         #assert isinstance(code, Code)
 
         ast = self.build_ast(code._tokens, code._customize)
+        self.customize(code._customize)
         ast = ast[0][0][0]
         
         n = ast[iter_index]
@@ -811,7 +958,7 @@ class Walker(GenericASTTraversal, object):
         cclass = self.currentclass
         self.currentclass = str(node[0].pattr)
 
-        self.print_()
+        self.write('\n\n')
         self.write(self.indent, 'class ', self.currentclass)
         self.print_super_classes(node)
         self.print_(':')
@@ -820,9 +967,15 @@ class Walker(GenericASTTraversal, object):
         self.indentMore()
         self.build_class(node[2][-2].attr)
         self.indentLess()
-        self.prune()
         
         self.currentclass = cclass
+        if len(self.__param_stack) > 1:
+            self.write('\n\n')
+        else:
+            self.write('\n\n\n')
+
+        self.prune()
+
 
     n_classdefdeco2 = n_classdef
 
@@ -883,39 +1036,76 @@ class Walker(GenericASTTraversal, object):
         """
         p = self.prec
         self.prec = 100
-        lastnode = node.pop().type
-        if lastnode.startswith('BUILD_LIST'):
+        lastnode = node.pop()
+        lastnodetype = lastnode.type
+        if lastnodetype.startswith('BUILD_LIST'):
             self.write('['); endchar = ']'
-        elif lastnode.startswith('BUILD_TUPLE'):
+        elif lastnodetype.startswith('BUILD_TUPLE'):
             self.write('('); endchar = ')'
-        elif lastnode.startswith('BUILD_SET'):
+        elif lastnodetype.startswith('BUILD_SET'):
             self.write('{'); endchar = '}'
-        elif lastnode.startswith('ROT_TWO'):
+        elif lastnodetype.startswith('ROT_TWO'):
             self.write('('); endchar = ')'
         else:
             raise 'Internal Error: n_build_list expects list or tuple'
         
+        flat_elems = []
+        for elem in node:
+            if elem == 'expr1024':
+                for subelem in elem:
+                        for subsubelem in subelem:
+                            flat_elems.append(subsubelem)
+            elif elem == 'expr32':
+                for subelem in elem:
+                    flat_elems.append(subelem)
+            else:
+                flat_elems.append(elem)
+            
         self.indentMore(INDENT_PER_LEVEL)
-        if len(node) > 3:
+        if lastnode.attr > 3:
             line_separator = ',\n' + self.indent
         else:
             line_separator = ', '
         sep = INDENT_PER_LEVEL[:-1]
-        for elem in node:
-            if (elem == 'ROT_THREE'):
+        
+        for elem in flat_elems:
+            if elem == 'ROT_THREE':
                 continue
-
             assert elem == 'expr'
             value = self.traverse(elem)
             self.write(sep, value)
             sep = line_separator
-        if len(node) == 1 and lastnode.startswith('BUILD_TUPLE'):
+        if lastnode.attr == 1 and lastnodetype.startswith('BUILD_TUPLE'):
             self.write(',')
         self.write(endchar)
         self.indentLess(INDENT_PER_LEVEL)
         self.prec = p
         self.prune()
 
+    def n_unpack(self, node):
+        for n in node[1:]:
+            if n[0].type == 'unpack':
+                n[0].type = 'unpack_w_parens'
+        self.default(node)
+    
+    n_unpack_w_parens = n_unpack
+    
+    def n_assign2(self, node):
+        for n in node[-2:]:
+            if n[0] == 'unpack':
+                n[0].type = 'unpack_w_parens'
+        self.default(node)
+        
+    def n_assign3(self, node):
+        for n in node[-3:]:
+            if n[0] == 'unpack':
+                n[0].type = 'unpack_w_parens'
+        self.default(node)
+        
+    def n_except_cond2(self, node):
+        if node[5][0] == 'unpack':
+            node[5][0].type = 'unpack_w_parens'
+        self.default(node)
 
     def engine(self, entry, startnode):
         #self.print_("-----")
@@ -946,9 +1136,9 @@ class Walker(GenericASTTraversal, object):
             elif typ == '-':	self.indentLess()
             elif typ == '|':	self.write(self.indent)
             ## no longer used, since BUILD_TUPLE_n is pretty printed:
-            ##elif typ == ',':
-            ##    if lastC == 1:
-            ##        self.write(',')
+            elif typ == ',':
+                if lastC == 1:
+                    self.write(',')
             elif typ == 'c':
                 self.preorder(node[entry[arg]])
                 arg += 1
@@ -960,8 +1150,8 @@ class Walker(GenericASTTraversal, object):
                 arg += 1
             elif typ == 'C':
                 low, high, sep = entry[arg]
-                ## lastC = remaining = len(node[low:high])
-                remaining = len(node[low:high])
+                lastC = remaining = len(node[low:high])
+                ## remaining = len(node[low:high])
                 for subnode in node[low:high]:
                     self.preorder(subnode)
                     remaining -= 1
@@ -971,8 +1161,8 @@ class Walker(GenericASTTraversal, object):
             elif typ == 'P':
                 p = self.prec
                 low, high, sep, self.prec = entry[arg]
-                ## lastC = remaining = len(node[low:high])
-                remaining = len(node[low:high])
+                lastC = remaining = len(node[low:high])
+                ## remaining = len(node[low:high])
                 for subnode in node[low:high]:
                     self.preorder(subnode)
                     remaining -= 1
@@ -984,7 +1174,7 @@ class Walker(GenericASTTraversal, object):
                 d = node.__dict__
                 expr = m.group('expr')
                 try:
-                    self.f.write(eval(expr, d, d))
+                    self.write(eval(expr, d, d))
                 except:
                     print node
                     raise
@@ -1066,9 +1256,9 @@ class Walker(GenericASTTraversal, object):
                assert node[1] == 'designator'
                # if lhs is not a UNPACK_TUPLE (or equiv.),
                # add parenteses to make this a tuple
-               if node[1][0] not in ('unpack', 'unpack_list'):
-                   return '(' + self.traverse(node[1]) + ')'
-               return self.traverse(node[1])
+               #if node[1][0] not in ('unpack', 'unpack_list'):
+               return '(' + self.traverse(node[1]) + ')'
+               #return self.traverse(node[1])
        raise "Can't find tuple parameter" % name
 
 
@@ -1206,7 +1396,7 @@ class Walker(GenericASTTraversal, object):
         #else:
         #    print ast[-1][-1]
 
-        for g in find_globals(ast, {}).keys():
+        for g in find_globals(ast, set()):
            self.print_(indent, 'global ', g)
            
         self.gen_source(ast, code._customize)
@@ -1243,12 +1433,6 @@ class Walker(GenericASTTraversal, object):
                 self.print_(repr(ast))
             return ast        
             
-#        while(len(tokens) > 2):
-#            if (tokens[-1] == Token('RETURN_VALUE')) and (tokens[-2] == Token('LOAD_CONST') and (tokens[-3].type != 'END_IF_LINE')):
-#                del tokens[-2:]
-#            else:
-#                break
-
         if len(tokens) > 2 or len(tokens) == 2 and not noneInNames:
             if tokens[-1] == Token('RETURN_VALUE'):
                 if tokens[-2] == Token('LOAD_CONST'):
@@ -1262,28 +1446,7 @@ class Walker(GenericASTTraversal, object):
         try:
             ast = Parser.parse(tokens, customize)
         except Parser.ParserError, e:
-            try:
-                tokens.append(Token('LOAD_CONST'))
-                tokens.append(Token('RETURN_VALUE'))
-                ast = Parser.parse(tokens, customize)
-            except Parser.ParserError, e:  
-                try:    
-                    del tokens[-2:]
-                    Parser.p.addRule('stmt ::= continue_stmt', Parser.nop)
-                    ast = Parser.parse(tokens, customize)
-                except Parser.ParserError, e:  
-                    try:    
-                        Parser.p.addRule('c_stmts ::= return_stmt', Parser.nop)
-                        ast = Parser.parse(tokens, customize)
-                    except:
-                        try:    
-                            Parser.p.addRule('stmt ::= return_stmt', Parser.nop)
-                            ast = Parser.parse(tokens, customize)
-                        except:
-                            raise ParserError(e, tokens)
-                finally:
-                    Parser.p.cleanup()
-                    Parser.p = Parser.Parser()
+            raise ParserError(e, tokens)
 
 
         if self.showast:

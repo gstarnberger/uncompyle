@@ -1,5 +1,5 @@
 #  Copyright (c) 1999 John Aycock
-#  Copyright (c) 2000-2002 by hartmut Goebel <hartmut@goebel.noris.de>
+#  Copyright (c) 2000-2002 by hartmut Goebel <h.goebel@crazy-compilers.com>
 #  Copyright (c) 2005 by Dan Pascu <dan@windowmaker.org>
 #
 #  See main module for license.
@@ -188,20 +188,26 @@ class Parser(GenericASTBuilder):
         assign ::= expr DUP_TOP designList
         assign ::= expr designator
 
-        stmt ::= _25_assign2
-        stmt ::= _25_assign3
-        _25_assign2 ::= expr expr ROT_TWO designator designator
-        _25_assign3 ::= expr expr expr ROT_THREE ROT_TWO designator designator designator
+        stmt ::= assign2
+        stmt ::= assign3
+        assign2 ::= expr expr ROT_TWO designator designator
+        assign3 ::= expr expr expr ROT_THREE ROT_TWO designator designator designator
         '''
 
     def p_print(self, args):
         '''
-        stmt ::= print_stmt
-        stmt ::= print_stmt_nl
-        stmt ::= print_nl_stmt
-        print_stmt ::= expr PRINT_ITEM
-        print_nl_stmt ::= PRINT_NEWLINE
-        print_stmt_nl ::= print_stmt print_nl_stmt
+        stmt ::= print_items_stmt
+        stmt ::= print_nl
+        stmt ::= print_items_nl_stmt
+        
+        print_items_stmt ::= expr PRINT_ITEM print_items_opt
+        print_items_nl_stmt ::= expr PRINT_ITEM print_items_opt PRINT_NEWLINE_CONT
+        print_items_opt ::= print_items
+        print_items_opt ::= 
+        print_items ::= print_items print_item
+        print_items ::= print_item
+        print_item ::= expr PRINT_ITEM_CONT
+        print_nl ::= PRINT_NEWLINE
         '''
 
     def p_print_to(self, args):
@@ -216,47 +222,36 @@ class Parser(GenericASTBuilder):
         print_to_items ::= print_to_item
         print_to_item ::= DUP_TOP expr ROT_TWO PRINT_ITEM_TO
         '''
-        # expr   print_to*   POP_TOP
-        # expr { print_to* } PRINT_NEWLINE_TO
-
-    def p_import15(self, args):
-        '''
-        stmt ::= importstmt
-        stmt ::= importfrom
-
-        importstmt ::= IMPORT_NAME STORE_FAST
-        importstmt ::= IMPORT_NAME STORE_NAME
-
-        importfrom ::= IMPORT_NAME importlist POP_TOP
-        importlist ::= importlist IMPORT_FROM
-        importlist ::= IMPORT_FROM
-        '''
 
     def p_import20(self, args):
-        '''
-        stmt ::= importstmt2
-        stmt ::= importfrom2
-        stmt ::= importstar2
-        
-        stmt ::= _25_importstmt
-        stmt ::= _25_importfrom
-        stmt ::= _25_importstar
+        '''        
+        stmt ::= importstmt
+        stmt ::= importfrom
+        stmt ::= importstar
+        stmt ::= importmultiple
 
-        importstmt2 ::= LOAD_CONST import_as
-        importstar2 ::= LOAD_CONST IMPORT_NAME IMPORT_STAR
-
-        importfrom2 ::= LOAD_CONST IMPORT_NAME importlist2 POP_TOP
         importlist2 ::= importlist2 import_as
         importlist2 ::= import_as
         import_as ::= IMPORT_NAME designator
-        import_as ::= IMPORT_NAME LOAD_ATTR designator
-        import_as ::= IMPORT_NAME LOAD_ATTR LOAD_ATTR designator
-        import_as ::= IMPORT_NAME LOAD_ATTR LOAD_ATTR LOAD_ATTR designator
+        import_as ::= IMPORT_NAME load_attrs designator
         import_as ::= IMPORT_FROM designator
 
-        _25_importstmt ::= LOAD_CONST LOAD_CONST import_as 
-        _25_importstar ::= LOAD_CONST LOAD_CONST IMPORT_NAME IMPORT_STAR 
-        _25_importfrom ::= LOAD_CONST LOAD_CONST IMPORT_NAME importlist2 POP_TOP
+        importstmt ::= LOAD_CONST LOAD_CONST import_as 
+        importstar ::= LOAD_CONST LOAD_CONST IMPORT_NAME IMPORT_STAR 
+        importfrom ::= LOAD_CONST LOAD_CONST IMPORT_NAME importlist2 POP_TOP
+        importstar ::= LOAD_CONST LOAD_CONST IMPORT_NAME_CONT IMPORT_STAR 
+        importfrom ::= LOAD_CONST LOAD_CONST IMPORT_NAME_CONT importlist2 POP_TOP
+        importmultiple ::= LOAD_CONST LOAD_CONST import_as imports_cont
+        
+        imports_cont ::= imports_cont import_cont
+        imports_cont ::= import_cont
+        import_cont ::= LOAD_CONST LOAD_CONST import_as_cont
+        import_as_cont ::= IMPORT_NAME_CONT designator
+        import_as_cont ::= IMPORT_NAME_CONT load_attrs designator
+        import_as_cont ::= IMPORT_FROM designator
+
+        load_attrs ::= LOAD_ATTR
+        load_attrs ::= load_attrs LOAD_ATTR
         '''
 
     def p_grammar(self, args):
@@ -264,7 +259,6 @@ class Parser(GenericASTBuilder):
         stmts ::= stmts sstmt
         stmts ::= sstmt
         sstmt ::= stmt
-        sstmt ::= return_stmt
         sstmt ::= ifelsestmtr
         sstmt ::= return_stmt RETURN_LAST
         
@@ -278,30 +272,43 @@ class Parser(GenericASTBuilder):
         c_stmts ::= _stmts
         c_stmts ::= _stmts lastc_stmt
         c_stmts ::= lastc_stmt
-        c_stmts ::= _stmts lastl_stmt continue_stmt
-        c_stmts ::= lastl_stmt continue_stmt
-        c_stmts ::= continue_stmt
+        c_stmts ::= continue_stmts
         
         lastc_stmt ::= iflaststmt
         lastc_stmt ::= whileelselaststmt
         lastc_stmt ::= forelselaststmt
         lastc_stmt ::= ifelsestmtr
-        lastc_stmt ::= c_trystmt
+        lastc_stmt ::= ifelsestmtc
+        lastc_stmt ::= tryelsestmtc
 
         c_stmts_opt ::= c_stmts
         c_stmts_opt ::= passstmt
         
         l_stmts ::= _stmts
         l_stmts ::= return_stmts
+        l_stmts ::= continue_stmts
         l_stmts ::= _stmts lastl_stmt
         l_stmts ::= lastl_stmt
         
         lastl_stmt ::= iflaststmtl
         lastl_stmt ::= ifelsestmtl
-        lastl_stmt ::= c_trystmt
-
+        lastl_stmt ::= forelselaststmtl
+        lastl_stmt ::= tryelsestmtl
+        
         l_stmts_opt ::= l_stmts
         l_stmts_opt ::= passstmt
+        
+        suite_stmts ::= _stmts
+        suite_stmts ::= return_stmts
+        suite_stmts ::= continue_stmts
+        
+        suite_stmts_opt ::= suite_stmts
+        suite_stmts_opt ::= passstmt
+        
+        else_suite ::= suite_stmts
+        else_suitel ::= l_stmts
+        else_suitec ::= c_stmts
+        else_suitec ::= return_stmts
 
         designList ::= designator designator
         designList ::= designator DUP_TOP designList
@@ -324,17 +331,35 @@ class Parser(GenericASTBuilder):
         stmt ::= call_stmt
         call_stmt ::= expr POP_TOP
 
-        return_stmt ::= expr RETURN_VALUE
+        stmt ::= return_stmt
+        return_stmt ::= ret_expr RETURN_VALUE
+        return_stmts ::= return_stmt
+        return_stmts ::= _stmts return_stmt
+        
+        return_if_stmts ::= return_if_stmt
+        return_if_stmts ::= _stmts return_if_stmt
+        return_if_stmt ::= ret_expr RETURN_END_IF
+        
 
         stmt ::= break_stmt
         break_stmt ::= BREAK_LOOP
         
-        continue_stmt ::= JUMP_BACK
+        stmt ::= continue_stmt
+        continue_stmt ::= CONTINUE
         continue_stmt ::= CONTINUE_LOOP
+        continue_stmts ::= _stmts lastl_stmt continue_stmt
+        continue_stmts ::= lastl_stmt continue_stmt
+        continue_stmts ::= continue_stmt
         
-        stmt ::= raise_stmt
-        raise_stmt ::= exprlist RAISE_VARARGS
-        raise_stmt ::= nullexprlist RAISE_VARARGS
+        stmt ::= raise_stmt0
+        stmt ::= raise_stmt1
+        stmt ::= raise_stmt2
+        stmt ::= raise_stmt3
+
+        raise_stmt0 ::= RAISE_VARARGS_0
+        raise_stmt1 ::= expr RAISE_VARARGS_1
+        raise_stmt2 ::= expr expr RAISE_VARARGS_2
+        raise_stmt3 ::= expr expr expr RAISE_VARARGS_3
         
         stmt ::= exec_stmt
         exec_stmt ::= expr exprlist DUP_TOP EXEC_STMT
@@ -353,6 +378,7 @@ class Parser(GenericASTBuilder):
         stmt ::= forstmt
         stmt ::= forelsestmt
         stmt ::= trystmt
+        stmt ::= tryelsestmt
         stmt ::= tryfinallystmt
         stmt ::= withstmt
         stmt ::= withasstmt
@@ -381,10 +407,13 @@ class Parser(GenericASTBuilder):
         classdefdeco2 ::= LOAD_CONST expr mkfunc CALL_FUNCTION_0 BUILD_CLASS
 
         assert ::= assert_expr POP_JUMP_IF_TRUE
-                LOAD_ASSERT RAISE_VARARGS
+                LOAD_ASSERT RAISE_VARARGS_1
                 
         assert2 ::= assert_expr POP_JUMP_IF_TRUE
-                LOAD_ASSERT expr RAISE_VARARGS
+                LOAD_ASSERT expr CALL_FUNCTION_1 RAISE_VARARGS_1
+                
+        assert2 ::= assert_expr POP_JUMP_IF_TRUE
+                LOAD_ASSERT expr RAISE_VARARGS_2
                 
         assert_expr ::= expr
         assert_expr ::= assert_expr_or
@@ -396,7 +425,6 @@ class Parser(GenericASTBuilder):
         _jump ::= JUMP_ABSOLUTE
         _jump ::= JUMP_FORWARD
         _jump ::= JUMP_BACK
-        _jump ::= JUMP_BACK JUMP_BACK_ELSE
 
         jmp_false    ::= POP_JUMP_IF_FALSE
         jmp_true    ::= POP_JUMP_IF_TRUE
@@ -409,206 +437,119 @@ class Parser(GenericASTBuilder):
         testfalse ::= expr jmp_false
         testtrue ::= expr jmp_true
         
-        _ifstmts_jump ::= return_stmts
+        _ifstmts_jump ::= return_if_stmts
         _ifstmts_jump ::= c_stmts_opt JUMP_FORWARD COME_FROM
         
         iflaststmt ::= testexpr c_stmts_opt JUMP_ABSOLUTE
         
-        iflaststmtl ::= testexpr l_stmts_opt JUMP_ABSOLUTE
-        iflaststmtl ::= testexpr l_stmts_opt JUMP_BACK
+        iflaststmtl ::= testexpr c_stmts_opt JUMP_BACK
 
-        ifelsestmt ::= testexpr c_stmts_opt JUMP_FORWARD c_stmts COME_FROM
-        ifelsestmt ::= testexpr c_stmts_opt JUMP_FORWARD return_stmts COME_FROM
-        ifelsestmt ::= testexpr c_stmts_opt JUMP_ABSOLUTE c_stmts
-        ifelsestmt ::= testexpr c_stmts_opt JUMP_ABSOLUTE return_stmts
-        ifelsestmtr ::= testexpr return_stmts return_stmts
+        ifelsestmt ::= testexpr c_stmts_opt JUMP_FORWARD else_suite COME_FROM
 
-        ifelsestmtl ::= testexpr l_stmts_opt JUMP_ABSOLUTE l_stmts
-        ifelsestmtl ::= testexpr l_stmts_opt _jump_back_jump_back_else l_stmts
-        _jump_back_jump_back_else ::= JUMP_BACK JUMP_BACK_ELSE
+        ifelsestmtc ::= testexpr c_stmts_opt JUMP_ABSOLUTE else_suitec
+
+        ifelsestmtr ::= testexpr return_if_stmts return_stmts
+
+        ifelsestmtl ::= testexpr c_stmts_opt JUMP_BACK else_suitel
         
         
-        trystmt ::= SETUP_EXCEPT stmts_opt
-                POP_BLOCK JUMP_FORWARD
-                COME_FROM except_stmts
+        trystmt ::= SETUP_EXCEPT suite_stmts_opt POP_BLOCK
+                try_middle COME_FROM
 
-        trystmt ::= SETUP_EXCEPT stmts_opt
-                POP_BLOCK 
-                COME_FROM JUMP_FORWARD except_stmts
+        tryelsestmt ::= SETUP_EXCEPT suite_stmts_opt POP_BLOCK
+                try_middle else_suite COME_FROM
 
-        except_stmts ::= except_cond1 except_sub_stmts 
-        except_stmts ::= except_cond2 except_sub_stmts 
-        except_stmts ::= except JUMP_FORWARD try_end COME_FROM
-        except_stmts ::= except2 END_FINALLY COME_FROM
-        except_stmts ::= END_FINALLY COME_FROM
+        tryelsestmtc ::= SETUP_EXCEPT suite_stmts_opt POP_BLOCK
+                try_middle else_suitec COME_FROM
 
-        except_stmts_a ::= except_cond1 except_sub_stmts_a 
-        except_stmts_a ::= except_cond2 except_sub_stmts_a 
-        except_stmts_a ::= except JUMP_FORWARD try_end COME_FROM
-        except_stmts_a ::= except2 try_end
-        except_stmts_a ::= try_end
+        tryelsestmtl ::= SETUP_EXCEPT suite_stmts_opt POP_BLOCK
+                try_middle else_suitel COME_FROM
 
-        except_sub_stmts ::= c_stmts_opt JUMP_FORWARD except_stmts_a COME_FROM
-        except_sub_stmts ::= return_stmts except_stmts
-        except_sub_stmts ::= continue_stmts jmp_back except_stmts
-        
-        except_sub_stmts_a ::= c_stmts_opt JUMP_FORWARD except_stmts_a COME_FROM
-        except_sub_stmts_a ::= return_stmts except_stmts_a
-        except_sub_stmts_a ::= continue_stmts jmp_back except_stmts_a
-        
-        jmp_back ::= JUMP_BACK
-        jmp_back ::= JUMP_BACK JUMP_BACK_ELSE
-        continue_stmts ::= continue_stmt
-        continue_stmts ::=_stmts continue_stmt
-        
-        try_end  ::= END_FINALLY COME_FROM
-        try_end  ::= except_else
-        except_else ::= END_FINALLY COME_FROM stmts
-
-        except_cond1 ::= DUP_TOP expr COMPARE_OP
-                POP_JUMP_IF_FALSE POP_TOP POP_TOP POP_TOP
+        try_middle ::= jmp_abs COME_FROM except_stmts
+                END_FINALLY
+        try_middle ::= JUMP_FORWARD COME_FROM except_stmts
+                END_FINALLY COME_FROM
                 
+        except_stmts ::= except_stmts except_stmt
+        except_stmts ::= except_stmt
+        
+        except_stmt ::= except_cond1 except_suite 
+        except_stmt ::= except_cond2 except_suite 
+        except_stmt ::= except
+
+        except_suite ::= c_stmts_opt JUMP_FORWARD
+        except_suite ::= c_stmts_opt jmp_abs
+        except_suite ::= return_stmts
+                      
+        except_cond1 ::= DUP_TOP expr COMPARE_OP
+                POP_JUMP_IF_FALSE POP_TOP POP_TOP POP_TOP                
 
         except_cond2 ::= DUP_TOP expr COMPARE_OP
                 POP_JUMP_IF_FALSE POP_TOP designator POP_TOP
                  
-        except  ::=  POP_TOP POP_TOP POP_TOP c_stmts_opt
-
-        except2  ::=  POP_TOP POP_TOP POP_TOP return_stmts
-
-
-        c_trystmt ::= SETUP_EXCEPT stmts_opt
-                POP_BLOCK JUMP_FORWARD
-                COME_FROM c_except_stmts
-
-        c_trystmt ::= SETUP_EXCEPT stmts_opt
-                POP_BLOCK
-                COME_FROM JUMP_FORWARD c_except_stmts
-
-        c_trystmt ::= SETUP_EXCEPT stmts_opt
-                POP_BLOCK jmp_abs
-                COME_FROM c_except_stmts2
-
-        c_trystmt ::= SETUP_EXCEPT stmts_opt
-                POP_BLOCK
-                COME_FROM jmp_abs c_except_stmts2
-
-        c_except_stmts ::= except_cond1 c_except_sub_stmts
-        c_except_stmts ::= except_cond2 c_except_sub_stmts
-        c_except_stmts ::= except jmp_abs try_end3
-        c_except_stmts ::= except2 END_FINALLY COME_FROM
-        c_except_stmts ::= END_FINALLY COME_FROM
-
-        c_except_stmts_a ::= except_cond1 c_except_sub_stmts_a
-        c_except_stmts_a ::= except_cond2 c_except_sub_stmts_a
-        c_except_stmts_a ::= except jmp_abs try_end3
-        c_except_stmts_a ::= except2 try_end3
-        c_except_stmts_a ::= try_end3
-
-        try_end3  ::= END_FINALLY COME_FROM
-        try_end3  ::= except_else3
-        except_else3 ::= END_FINALLY COME_FROM c_stmts
-        except_else3 ::= END_FINALLY COME_FROM l_stmts
-
-        c_except_sub_stmts ::= c_stmts_opt jmp_abs c_except_stmts_a
-        c_except_sub_stmts ::= return_stmts c_except_stmts
-
-        c_except_sub_stmts_a ::= c_stmts_opt jmp_abs c_except_stmts_a
-        c_except_sub_stmts_a ::= return_stmts c_except_stmts_a
-
-        c_except_stmts2 ::= except_cond1 c_except_sub_stmts2
-        c_except_stmts2 ::= except_cond2 c_except_sub_stmts2
-        c_except_stmts2 ::= except jmp_abs try_end2
-        c_except_stmts2 ::= except2 END_FINALLY
-        c_except_stmts2 ::= END_FINALLY
-
-        c_except_stmts2_a ::= except_cond1 c_except_sub_stmts2_a
-        c_except_stmts2_a ::= except_cond2 c_except_sub_stmts2_a
-        c_except_stmts2_a ::= except jmp_abs try_end2
-        c_except_stmts2_a ::= except2 try_end2
-        c_except_stmts2_a ::= try_end2
-
-        c_except_sub_stmts2 ::= c_stmts_opt jmp_abs c_except_stmts2_a
-        c_except_sub_stmts2 ::= return_stmts c_except_stmts2
-
-        c_except_sub_stmts2_a ::= c_stmts_opt jmp_abs c_except_stmts2_a
-        c_except_sub_stmts2_a ::= return_stmts c_except_stmts2_a
-
-        try_end2  ::= END_FINALLY
-        try_end2  ::= except_else2
-        except_else2 ::= END_FINALLY c_stmts
-        except_else2 ::= END_FINALLY l_stmts
-
+        except  ::=  POP_TOP POP_TOP POP_TOP c_stmts_opt JUMP_FORWARD
+        except  ::=  POP_TOP POP_TOP POP_TOP c_stmts_opt jmp_abs
+        except  ::=  POP_TOP POP_TOP POP_TOP return_stmts
+        
         jmp_abs ::= JUMP_ABSOLUTE
         jmp_abs ::= JUMP_BACK
-        jmp_abs ::= JUMP_BACK JUMP_BACK_ELSE
         
 
 
-        tryfinallystmt ::= SETUP_FINALLY stmts
+        tryfinallystmt ::= SETUP_FINALLY suite_stmts
                 POP_BLOCK LOAD_CONST
-                COME_FROM stmts_opt END_FINALLY
+                COME_FROM suite_stmts_opt END_FINALLY
                 
-        withstmt ::= expr SETUP_WITH POP_TOP stmts_opt
+        withstmt ::= expr SETUP_WITH POP_TOP suite_stmts_opt
                 POP_BLOCK LOAD_CONST COME_FROM
                 WITH_CLEANUP END_FINALLY
 
-        withasstmt ::= expr SETUP_WITH designator stmts_opt
+        withasstmt ::= expr SETUP_WITH designator suite_stmts_opt
                 POP_BLOCK LOAD_CONST COME_FROM
                 WITH_CLEANUP END_FINALLY
 
         whilestmt ::= SETUP_LOOP
                 testexpr
-                l_stmts_opt _jump_back
+                l_stmts_opt JUMP_BACK
                 POP_BLOCK COME_FROM
 
-        _jump_back ::= JUMP_BACK
-        _jump_back ::= JUMP_BACK JUMP_BACK_ELSE
-        
         whilestmt ::= SETUP_LOOP
                 testexpr
                 return_stmts
                 POP_BLOCK COME_FROM
 
-        while1stmt ::= SETUP_LOOP l_stmts _jump_back COME_FROM
+        while1stmt ::= SETUP_LOOP l_stmts JUMP_BACK COME_FROM
         while1stmt ::= SETUP_LOOP return_stmts COME_FROM
+        while1elsestmt ::= SETUP_LOOP l_stmts JUMP_BACK else_suite COME_FROM
+
         whileelsestmt ::= SETUP_LOOP testexpr
-                l_stmts_opt _jump_back
+                l_stmts_opt JUMP_BACK
                 POP_BLOCK
-                stmts COME_FROM
+                else_suite COME_FROM
 
         whileelselaststmt ::= SETUP_LOOP testexpr
-                l_stmts_opt _jump_back
+                l_stmts_opt JUMP_BACK
                 POP_BLOCK
-                c_stmts COME_FROM
+                else_suitec COME_FROM
 
         _for ::= GET_ITER FOR_ITER
         _for ::= LOAD_CONST FOR_LOOP
 
-        forstmt ::= SETUP_LOOP expr _for designator
-                l_stmts_opt _jump_back
-                POP_BLOCK COME_FROM
-        forstmt ::= SETUP_LOOP expr _for designator
-                return_stmts 
-                POP_BLOCK COME_FROM
-
-        forelsestmt ::= SETUP_LOOP expr _for designator
-                l_stmts_opt _jump_back
-                POP_BLOCK stmts COME_FROM
-        forelsestmt ::= SETUP_LOOP expr _for designator
-                return_stmts _come_from
-                POP_BLOCK stmts COME_FROM
-
-        forelselaststmt ::= SETUP_LOOP expr _for designator
-                l_stmts_opt _jump_back
-                POP_BLOCK c_stmts COME_FROM
-        forelselaststmt ::= SETUP_LOOP expr _for designator
-                return_stmts _come_from
-                POP_BLOCK c_stmts COME_FROM
-
-        return_stmts ::= return_stmt
-        return_stmts ::= _stmts return_stmt
+        for_block ::= l_stmts_opt JUMP_BACK
+        for_block ::= return_stmts _come_from
         
+        forstmt ::= SETUP_LOOP expr _for designator
+                for_block POP_BLOCK COME_FROM
+
+        forelsestmt ::= SETUP_LOOP expr _for designator
+                for_block POP_BLOCK else_suite COME_FROM
+
+        forelselaststmt ::= SETUP_LOOP expr _for designator
+                for_block POP_BLOCK else_suitec COME_FROM
+
+        forelselaststmtl ::= SETUP_LOOP expr _for designator
+                for_block POP_BLOCK else_suitel COME_FROM
+
         '''
 
     def p_expr(self, args):
@@ -618,7 +559,6 @@ class Parser(GenericASTBuilder):
         expr ::= LOAD_FAST
         expr ::= LOAD_NAME
         expr ::= LOAD_CONST
-        expr ::= LOAD_ASSERT
         expr ::= LOAD_GLOBAL
         expr ::= LOAD_DEREF
         expr ::= LOAD_LOCALS
@@ -703,16 +643,27 @@ class Parser(GenericASTBuilder):
         conditional ::= expr POP_JUMP_IF_FALSE expr JUMP_FORWARD expr COME_FROM
         conditional ::= expr POP_JUMP_IF_FALSE expr JUMP_ABSOLUTE expr
         expr ::= conditionalnot
-        conditionalnot ::= expr POP_JUMP_IF_TRUE expr _jump expr COME_FROM
+        conditionalnot ::= expr POP_JUMP_IF_TRUE expr JUMP_FORWARD expr COME_FROM
+        conditionalnot ::= expr POP_JUMP_IF_TRUE expr JUMP_ABSOLUTE expr 
+
+        ret_expr ::= expr
+        ret_expr ::= ret_and
+        ret_expr ::= ret_or
+        
+        ret_expr_or_cond ::= ret_expr
+        ret_expr_or_cond ::= ret_cond
+        ret_expr_or_cond ::= ret_cond_not
+
+        ret_and  ::= expr JUMP_IF_FALSE_OR_POP ret_expr_or_cond COME_FROM
+        ret_or   ::= expr JUMP_IF_TRUE_OR_POP ret_expr_or_cond COME_FROM
+        ret_cond ::= expr POP_JUMP_IF_FALSE expr RETURN_END_IF ret_expr_or_cond
+        ret_cond_not ::= expr POP_JUMP_IF_TRUE expr RETURN_END_IF ret_expr_or_cond
 
         stmt ::= return_lambda
         stmt ::= conditional_lambda
-        stmt ::= conditional_lambda2
         
-        return_lambda ::= expr RETURN_VALUE LAMBDA_MARKER
-        conditional_lambda ::= expr POP_JUMP_IF_FALSE return_stmt return_stmt LAMBDA_MARKER 
-        conditional_lambda2 ::= expr POP_JUMP_IF_FALSE expr POP_JUMP_IF_FALSE 
-            return_stmt return_stmt LAMBDA_MARKER 
+        return_lambda ::= ret_expr RETURN_VALUE LAMBDA_MARKER
+        conditional_lambda ::= expr POP_JUMP_IF_FALSE return_if_stmt return_stmt LAMBDA_MARKER 
 
         cmp ::= cmp_list
         cmp ::= compare
@@ -742,10 +693,13 @@ class Parser(GenericASTBuilder):
         exprlist ::= expr
 
         nullexprlist ::=
+        
+        expr32 ::= expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr expr  
+        expr1024 ::= expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 expr32 
         '''
 
     def nonterminal(self, nt, args):
-        collect = ('stmts', 'exprlist', 'kvlist', '_stmts')
+        collect = ('stmts', 'exprlist', 'kvlist', '_stmts', 'print_items')
 
         if nt in collect and len(args) > 1:
             #
@@ -801,12 +755,12 @@ def parse(tokens, customize):
         #nop = lambda self, args: None
         op = k[:string.rfind(k, '_')]
         if op in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SET'):
-            rule = 'build_list ::= ' + 'expr '*v + k
+            rule = 'build_list ::= ' + 'expr1024 '*(v/1024) + 'expr32 '*((v/32)%32) + 'expr '*(v%32) + k
         elif op in ('UNPACK_TUPLE', 'UNPACK_SEQUENCE'):
             rule = 'unpack ::= ' + k + ' designator'*v
         elif op == 'UNPACK_LIST':
             rule = 'unpack_list ::= ' + k + ' designator'*v
-        elif op == 'DUP_TOPX':
+        elif op in ('DUP_TOPX', 'RAISE_VARARGS'):
             # no need to add a rule
             continue
             #rule = 'dup_topx ::= ' + 'expr '*v + k

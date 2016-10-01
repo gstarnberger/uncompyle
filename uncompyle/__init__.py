@@ -1,5 +1,5 @@
 #  Copyright (c) 1999 John Aycock
-#  Copyright (c) 2000 by hartmut Goebel <hartmut@goebel.noris.de>
+#  Copyright (c) 2000 by hartmut Goebel <h.goebel@crazy-compilers.com>
 #
 #  Permission is hereby granted, free of charge, to any person obtaining
 #  a copy of this software and associated documentation files (the
@@ -78,7 +78,7 @@ def _load_module(filename):
     fp.close()
     return version, co
 
-def uncompyle(version, co, out=None, showasm=0, showast=0):
+def uncompyle(version, co, out=None, showasm=0, showast=0, deob=0):
     """
     diassembles a given code block 'co'
     """
@@ -86,10 +86,11 @@ def uncompyle(version, co, out=None, showasm=0, showast=0):
 
     # store final output stream for case of error
     __real_out = out or sys.stdout
-
+    if co.co_filename:
+        print >>__real_out, '#Embedded file name: %s' % co.co_filename
     scanner = Scanner.getscanner(version)
     scanner.setShowAsm(showasm, out)
-    tokens, customize = scanner.disassemble(co)
+    tokens, customize = scanner.disassemble(co, deob=deob)
 
     #  Build AST from disassembly.
     walker = Walker.Walker(out, scanner, showast=showast)
@@ -114,15 +115,19 @@ def uncompyle(version, co, out=None, showasm=0, showast=0):
         pass
     walker.mod_globs = Walker.find_globals(ast, set())
     walker.gen_source(ast, customize)
+    for g in walker.mod_globs:
+        walker.write('global %s ## Warning: Unused global\n' % g)
+    if walker.pending_newlines:
+        print >>__real_out
     if walker.ERROR:
         raise walker.ERROR
 
-def uncompyle_file(filename, outstream=None, showasm=0, showast=0):
+def uncompyle_file(filename, outstream=None, showasm=0, showast=0, deob=0):
     """
     decompile Python byte-code file (.pyc)
     """
     version, co = _load_module(filename)
-    uncompyle(version, co, outstream, showasm, showast)
+    uncompyle(version, co, outstream, showasm, showast, deob)
     co = None
 
 #---- main -------
@@ -138,7 +143,7 @@ else:
         return ''
 
 def main(in_base, out_base, files, codes, outfile=None,
-         showasm=0, showast=0, do_verify=0):
+         showasm=0, showast=0, do_verify=0, py=0, deob=0):
     """
     in_base	base directory for input files
     out_base	base directory for output files (ignored when
@@ -168,7 +173,7 @@ def main(in_base, out_base, files, codes, outfile=None,
         version = sys.version[:3] # "2.5"
         with open(code, "r") as f:
             co = compile(f.read(), "", "exec")
-        uncompyle(sys.version[:3], co, sys.stdout, showasm=showasm, showast=showast)
+        uncompyle(sys.version[:3], co, sys.stdout, showasm=showasm, showast=showast, deob=deob)
 
     for file in files:
         infile = os.path.join(in_base, file)
@@ -179,13 +184,17 @@ def main(in_base, out_base, files, codes, outfile=None,
         elif out_base is None:
             outstream = sys.stdout
         else:
-            outfile = os.path.join(out_base, file) + '_dis'
+            outfile = os.path.join(out_base, file)
+            if py:
+                outfile = outfile[:-1]
+            else:
+                outfile += '_dis'
             outstream = _get_outstream(outfile)
         #print >>sys.stderr, outfile 
 
         # try to decomyple the input file
         try:
-            uncompyle_file(infile, outstream, showasm, showast)
+            uncompyle_file(infile, outstream, showasm, showast, deob)
             tot_files += 1
         except KeyboardInterrupt:
             if outfile:
